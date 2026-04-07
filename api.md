@@ -46,6 +46,16 @@ Query parameters:
 - `as_of_date` (optional, string `YYYY-MM-DD`)
   - Used to generate the `month` feature.
   - If omitted, current UTC date is used.
+- `recent_prcp` (optional, string)
+  - Comma-separated PRCP(mm) values ordered oldest to newest.
+  - If provided, must contain at least 7 numeric values.
+  - If omitted, precipitation-derived inference features default to zero.
+- `tmax`, `tmin` (optional, float)
+  - Same-day max/min temperature inputs for weather features.
+- `awnd`, `snow`, `snow_depth` (optional, float)
+  - Optional same-day weather inputs for wind/snow-related features.
+- `heavy_rain_threshold` (optional, float, default `20.0`)
+  - Threshold used to compute `heavy_rain_flag_1d`.
 
 Response (JSON):
 
@@ -65,6 +75,13 @@ The API converts raw query inputs into the same feature schema used during train
 - `discharge_roll_mean_7`: mean of last 7
 - `discharge_diff_1`: lag1 - lag2
 - `month`: from `as_of_date` (or current UTC date)
+- `prcp_lag1`, `prcp_lag2`, `prcp_lag3`
+- `prcp_roll_sum_3`, `prcp_roll_sum_7`, `prcp_roll_mean_3`, `prcp_roll_mean_7`
+- `heavy_rain_flag_1d`
+- `tmax`, `tmin`, `tavg`, `temp_range`
+- `awnd`, `snow`, `snow_depth`
+- `prcp_x_discharge_lag1`
+- `prcp_roll_sum_3_x_discharge_roll_mean_3`
 
 These are assembled in `api/predict.py` and ordered using `artifact["feature_columns"]` before calling `model.predict`.
 
@@ -96,13 +113,13 @@ Interactive docs:
 ### Browser or curl
 
 ```text
-http://127.0.0.1:8000/predict?site_id=01646500&recent_discharge=100,105,110,120,130,140,150&as_of_date=2024-01-10
+http://127.0.0.1:8000/predict?site_id=01646500&recent_discharge=100,105,110,120,130,140,150&recent_prcp=0,0,2,5,12,18,24&tmax=24&tmin=13&as_of_date=2024-01-10
 ```
 
 ### curl command
 
 ```bash
-curl "http://127.0.0.1:8000/predict?site_id=01646500&recent_discharge=100,105,110,120,130,140,150&as_of_date=2024-01-10"
+curl "http://127.0.0.1:8000/predict?site_id=01646500&recent_discharge=100,105,110,120,130,140,150&recent_prcp=0,0,2,5,12,18,24&tmax=24&tmin=13&as_of_date=2024-01-10"
 ```
 
 Expected style of response:

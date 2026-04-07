@@ -6,6 +6,7 @@ The current implementation builds a binary classifier that predicts whether next
 ## What this project does
 
 - Fetches raw daily river data from USGS (discharge and optional stage).
+- Fetches NOAA daily weather data (PRCP/TMAX/TMIN; optional AWND/SNOW/SNWD when available).
 - Cleans and normalizes data into a continuous daily time series.
 - Builds lag/rolling features and a binary next-day target.
 - Trains a baseline `LogisticRegression` model.
@@ -30,7 +31,7 @@ data/
 
 data_ingestion/
   fetch_usgs.py          USGS NWIS daily values ingestion
-  fetch_weather.py       NOAA ingestion scaffold (not implemented yet)
+  fetch_weather.py       NOAA CDO ingestion (token-based, paginated windows)
   sites.json             Gauge site configuration
   utils.py               Shared ingestion helpers (logging, HTTP retries, etc.)
 
@@ -109,43 +110,49 @@ Uses site ids from `data_ingestion/sites.json`.
 python -m data_processing.clean_data --raw-dir data/raw/usgs --out-path data/processed/clean_data.csv
 ```
 
-### 3) Build features
+### 3) Fetch NOAA weather (optional but recommended)
 
 ```bash
-python -m modeling.features --clean-path data/processed/clean_data.csv --out-path data/processed/features.csv --percentile 0.9 --noaa-dir data/raw/noaa
+python -m data_ingestion.fetch_weather --sites-config data_ingestion/sites.json --start-date 2018-01-01 --end-date 2024-12-31 --out-dir data/raw/noaa --token YOUR_NOAA_TOKEN
 ```
 
-### 4) Train baseline model
+### 4) Build features
+
+```bash
+python -m modeling.features --clean-path data/processed/clean_data.csv --out-path data/processed/features.csv --percentile 0.9 --noaa-dir data/raw/noaa --heavy-rain-threshold 20.0
+```
+
+### 5) Train baseline model
 
 ```bash
 python -m modeling.train --features-path data/processed/features.csv --model-out models/model.pkl --model-type baseline
 ```
 
-### 5) Train LightGBM model
+### 6) Train LightGBM model
 
 ```bash
 python -m modeling.train --features-path data/processed/features.csv --model-out models/lgbm_model.pkl --model-type lightgbm
 ```
 
-### 6) Evaluate one model
+### 7) Evaluate one model
 
 ```bash
 python -m modeling.evaluate --features-path data/processed/features.csv --model-path models/lgbm_model.pkl --out-path results/metrics_lgbm.json
 ```
 
-### 7) Compare models
+### 8) Compare models
 
 ```bash
 python -m modeling.evaluate --features-path data/processed/features.csv --compare --model-paths models/model.pkl models/lgbm_model.pkl --out-path results/comparison.json
 ```
 
-### 8) Lead-time analysis
+### 9) Lead-time analysis
 
 ```bash
 python -m modeling.lead_time --clean-path data/processed/clean_data.csv --model-path models/lgbm_model.pkl --out-path results/lead_time_analysis.json
 ```
 
-### 9) Full pipeline in one command
+### 10) Full pipeline in one command
 
 ```bash
 bash run_full_pipeline.sh
@@ -176,11 +183,15 @@ Query params:
 - `site_id`: string (currently included for traceability; baseline model does not use site metadata as input).
 - `recent_discharge`: comma-separated numeric sequence (oldest to newest, at least 7 values).
 - `as_of_date`: optional `YYYY-MM-DD`; if omitted, UTC today is used for month feature.
+- `recent_prcp`: optional comma-separated PRCP(mm) values (oldest to newest, at least 7 if provided).
+- `tmax`, `tmin`: optional same-day temperature values.
+- `awnd`, `snow`, `snow_depth`: optional same-day weather values.
+- `heavy_rain_threshold`: optional threshold (default `20.0`) for heavy-rain indicator.
 
 Example:
 
 ```text
-/predict?site_id=01646500&recent_discharge=100,105,110,120,130,140,150&as_of_date=2024-01-10
+/predict?site_id=01646500&recent_discharge=100,105,110,120,130,140,150&recent_prcp=0,0,2,5,12,18,24&tmax=24&tmin=13&as_of_date=2024-01-10
 ```
 
 ## Frontend
@@ -212,9 +223,12 @@ Note: the current frontend references `src/lib/api` and may require a small inte
   - `discharge_roll_mean_7`
   - `discharge_diff_1`
   - `month`
-  - `precip_mm_lag1`
-  - `precip_mm_roll_3`
-  - `precip_mm_roll_7`
+  - `prcp_lag1`, `prcp_lag2`, `prcp_lag3`
+  - `prcp_roll_sum_3`, `prcp_roll_sum_7`, `prcp_roll_mean_3`, `prcp_roll_mean_7`
+  - `heavy_rain_flag_1d`
+  - `tmax`, `tmin`, `tavg`, `temp_range`
+  - `awnd`, `snow`, `snow_depth`
+  - `prcp_x_discharge_lag1`, `prcp_roll_sum_3_x_discharge_roll_mean_3`
 - Target:
   - For each site, threshold = discharge percentile (`--percentile`, default `0.9`)
   - `target = 1` if next-day discharge > threshold, else `0`
@@ -252,7 +266,7 @@ See `datasets.md` for dataset sources, schemas, and planned data expansions.
 
 ### Not complete yet
 
-- `data_ingestion/fetch_weather.py` is still a scaffold (`NotImplementedError`); NOAA ingestion is not implemented there.
+- NOAA API data availability/quality can vary by station and date range.
 - No automated tests yet (unit/integration/regression).
 - No formal experiment tracking (MLflow/W&B) or model registry.
 - No hyperparameter search pipeline beyond fixed baseline configs.
@@ -261,7 +275,7 @@ See `datasets.md` for dataset sources, schemas, and planned data expansions.
 
 ## Current limitations / roadmap
 
-- NOAA ingestion module remains scaffolded even though feature builder can consume prepared NOAA rainfall CSV files.
-- Baseline feature set is still compact; no basin geomorphology/land-use/static attributes yet.
+- NOAA ingestion depends on valid CDO token and station mappings; station coverage quality may vary.
+- Baseline feature set does not yet include basin geomorphology/land-use/static attributes.
 - No automated tests yet for ingestion, feature consistency, or API behavior.
 - Probabilistic calibration and decision-threshold tuning are future improvements.

@@ -17,9 +17,23 @@ Current feature columns:
 - `discharge_roll_mean_7`
 - `discharge_diff_1`
 - `month`
-- `precip_mm_lag1`
-- `precip_mm_roll_3`
-- `precip_mm_roll_7`
+- `prcp_lag1`
+- `prcp_lag2`
+- `prcp_lag3`
+- `prcp_roll_sum_3`
+- `prcp_roll_sum_7`
+- `prcp_roll_mean_3`
+- `prcp_roll_mean_7`
+- `heavy_rain_flag_1d`
+- `tmax`
+- `tmin`
+- `tavg`
+- `temp_range`
+- `awnd`
+- `snow`
+- `snow_depth`
+- `prcp_x_discharge_lag1`
+- `prcp_roll_sum_3_x_discharge_roll_mean_3`
 
 ## Input needed before feature engineering
 
@@ -28,6 +42,8 @@ Feature generation starts from cleaned daily gauge data (`data/processed/clean_d
 - `site_id`
 - `date`
 - `discharge`
+
+Then NOAA daily weather data from `data/raw/noaa` is merged by `site_id` + `date` when available.
 
 Rows are sorted per site by date before any lag/rolling operation.
 
@@ -75,23 +91,107 @@ Rows are sorted per site by date before any lag/rolling operation.
 - What it does: injects coarse seasonality.
 - Why it helps: high-flow behavior often follows seasonal snowmelt/rainfall cycles.
 
-### 8) `precip_mm_lag1`
+### 8) `prcp_lag1`
 
-- Definition: precipitation (mm) from previous day (`precip_mm.shift(1)`).
+- Definition: precipitation (mm) from previous day (`prcp.shift(1)`).
 - What it does: adds immediate rainfall forcing before prediction day.
 - Why it helps: recent rain is a direct driver of runoff and rising discharge.
 
-### 9) `precip_mm_roll_3`
+### 9) `prcp_lag2`
+
+- Definition: precipitation (mm) from two days ago (`prcp.shift(2)`).
+- What it does: extends short rainfall memory.
+- Why it helps: delayed basin response can make earlier rain still relevant.
+
+### 10) `prcp_lag3`
+
+- Definition: precipitation (mm) from three days ago (`prcp.shift(3)`).
+- What it does: provides additional short-window rainfall history.
+- Why it helps: catchment/storage effects may respond over multiple days.
+
+### 11) `prcp_roll_sum_3`
 
 - Definition: rolling 3-day precipitation sum (`rolling(3, min_periods=1).sum()`).
-- What it does: captures short accumulation of rainfall over recent days.
-- Why it helps: flood response often depends on cumulative rain, not one-day rain alone.
+- What it does: captures near-term accumulated rainfall.
+- Why it helps: flood response often depends on cumulative rain, not just a single day.
 
-### 10) `precip_mm_roll_7`
+### 12) `prcp_roll_sum_7`
 
 - Definition: rolling 7-day precipitation sum (`rolling(7, min_periods=1).sum()`).
-- What it does: captures longer wetness accumulation and catchment saturation proxy.
+- What it does: tracks week-scale wetness accumulation.
 - Why it helps: sustained wet periods increase runoff efficiency and flood likelihood.
+
+### 13) `prcp_roll_mean_3`
+
+- Definition: rolling 3-day precipitation mean (`rolling(3, min_periods=1).mean()`).
+- What it does: smooths short precipitation variability.
+- Why it helps: helps separate persistent moderate rain from isolated spikes.
+
+### 14) `prcp_roll_mean_7`
+
+- Definition: rolling 7-day precipitation mean (`rolling(7, min_periods=1).mean()`).
+- What it does: smooths broader precipitation regime over a week.
+- Why it helps: captures overall wet/dry context around the forecast date.
+
+### 15) `heavy_rain_flag_1d`
+
+- Definition: binary flag where `1` if `prcp > heavy_rain_threshold`, else `0`.
+- What it does: creates an event-style extreme rain indicator.
+- Why it helps: heavy rainfall events can trigger abrupt flood-risk jumps.
+
+### 16) `tmax`
+
+- Definition: same-day maximum temperature (NOAA `TMAX`, numeric).
+- What it does: adds thermal forcing context.
+- Why it helps: warm conditions can influence snowmelt/runoff patterns.
+
+### 17) `tmin`
+
+- Definition: same-day minimum temperature (NOAA `TMIN`, numeric).
+- What it does: adds nighttime cooling context.
+- Why it helps: helps characterize freeze-thaw conditions and hydrologic state.
+
+### 18) `tavg`
+
+- Definition: `(tmax + tmin) / 2`.
+- What it does: daily mean temperature proxy.
+- Why it helps: useful compact signal for weather regime and snowmelt tendency.
+
+### 19) `temp_range`
+
+- Definition: `tmax - tmin`.
+- What it does: intraday temperature variability.
+- Why it helps: can reflect atmospheric instability and thermal transitions.
+
+### 20) `awnd`
+
+- Definition: average wind speed (NOAA `AWND`, numeric; fallback `0` if unavailable).
+- What it does: adds additional weather forcing context.
+- Why it helps: may correlate with storm-system intensity and evapotranspiration effects.
+
+### 21) `snow`
+
+- Definition: snowfall amount (NOAA `SNOW`, numeric; fallback `0` if unavailable).
+- What it does: captures frozen precipitation input.
+- Why it helps: snow accumulation can delay runoff and shift flood timing.
+
+### 22) `snow_depth`
+
+- Definition: snow depth (NOAA `SNWD`, numeric; fallback `0` if unavailable).
+- What it does: proxy for stored water in snowpack.
+- Why it helps: snowpack status affects melt-driven discharge risk.
+
+### 23) `prcp_x_discharge_lag1`
+
+- Definition: interaction term `prcp * discharge_lag1`.
+- What it does: combines current rainfall with current river state.
+- Why it helps: the same rain can have very different impact at low vs already-high flow.
+
+### 24) `prcp_roll_sum_3_x_discharge_roll_mean_3`
+
+- Definition: interaction term `prcp_roll_sum_3 * discharge_roll_mean_3`.
+- What it does: combines recent cumulative rain with recent average discharge.
+- Why it helps: captures compounding effects between wet catchment and elevated baseflow.
 
 ## Target definition used with features
 
@@ -122,7 +222,7 @@ This avoids direct leakage from future values into feature columns.
 
 ## Limitations of current feature set
 
-- NOAA precipitation is included, but no temperature/wind/humidity/snow features yet.
+- NOAA weather is now included (precipitation, temperature, optional wind/snow), but humidity/pressure/radiation are still missing.
 - No static watershed characteristics.
 - No multi-site upstream/downstream relationship features.
 - Month as integer is a coarse seasonal proxy.
@@ -131,9 +231,9 @@ This avoids direct leakage from future values into feature columns.
 
 Consistency is maintained by:
 
-- saving `feature_columns` inside `models/model.pkl`
-- reconstructing identical feature names/order in `api/predict.py`
-- selecting columns at inference as `X = X[feature_cols]`
+- saving `feature_columns` inside model artifacts (`models/model.pkl`, `models/lgbm_model.pkl`)
+- selecting inference columns by artifact order (`X = X[feature_cols]`) in model evaluation/inference paths
+- allowing optional weather inputs in API inference (`recent_prcp`, `tmax`, `tmin`, `awnd`, `snow`, `snow_depth`) with safe defaults
 
 This reduces risk of train/serve schema mismatch.
 
@@ -152,15 +252,26 @@ Computed features:
 - `discharge_roll_mean_7 = (100+105+110+120+130+140+150)/7 = 122.14...`
 - `discharge_diff_1 = 150 - 140 = 10`
 - `month = from as_of_date or current UTC date`
-- `precip_mm_lag1 = yesterday precipitation`
-- `precip_mm_roll_3 = precipitation sum over last 3 days`
-- `precip_mm_roll_7 = precipitation sum over last 7 days`
+- `prcp_lag1 = yesterday precipitation`
+- `prcp_roll_sum_3 = precipitation sum over last 3 days`
+- `prcp_roll_sum_7 = precipitation sum over last 7 days`
+- `heavy_rain_flag_1d = 1 if prcp > threshold else 0`
+- `tavg = (tmax + tmin)/2`
+- `prcp_x_discharge_lag1 = prcp * discharge_lag1`
+
+## NOAA availability and graceful fallback
+
+- If NOAA files are missing for a site/date, weather inputs are safely defaulted (typically `0.0` for numeric weather fields).
+- The pipeline prints:
+  - which NOAA-derived features were generated
+  - which source NOAA columns were unavailable (`PRCP`, `TMAX`, `TMIN`, `AWND`, `SNOW`, `SNWD`)
+- This keeps feature generation robust while still surfacing missing-weather gaps.
 
 ## Future feature improvements
 
 Recommended next additions:
 
-- precipitation and temperature features (NOAA integration)
+- humidity, pressure, and radiation weather signals
 - rolling max/min and volatility indicators
 - site metadata (basin area, elevation, land cover)
 - cyclic month encoding (`sin/cos`) instead of raw integer month

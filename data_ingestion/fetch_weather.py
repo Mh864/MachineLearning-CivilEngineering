@@ -96,8 +96,10 @@ def _fetch_station_daily(
 
     keep_cols = [c for c in ["station", "name", "date", "datatype", "value"] if c in long.columns]
     long = long[keep_cols]
-    if set(["station", "name", "date", "datatype", "value"]) - set(long.columns):
+    if set(["station", "date", "datatype", "value"]) - set(long.columns):
         return pd.DataFrame(columns=["STATION", "NAME", "DATE", "PRCP", "TMAX", "TMIN"])
+    if "name" not in long.columns:
+        long["name"] = station_id
 
     long["DATE"] = pd.to_datetime(long["date"], errors="coerce").dt.strftime("%Y-%m-%d")
     long["VALUE"] = pd.to_numeric(long["value"], errors="coerce")

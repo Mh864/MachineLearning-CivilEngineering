@@ -133,4 +133,4 @@ No clustering, anomaly detection, PCA, autoencoders, or self-supervised modules 
 
 ## 7) Current practical note
 
-The training feature set now includes precipitation-derived features. Any artifact used for inference must have feature columns that the inference path can construct consistently; this should be validated whenever feature engineering changes.
+The training feature set now includes NOAA weather-derived features and interaction terms. The API inference path has been updated to accept optional weather inputs (`recent_prcp`, `tmax`, `tmin`, `awnd`, `snow`, `snow_depth`) and remains backward-compatible by defaulting missing weather values.

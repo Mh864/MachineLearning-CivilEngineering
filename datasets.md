@@ -81,6 +81,14 @@ Per site, ordered by date:
 - `discharge_roll_mean_3`, `discharge_roll_mean_7`
 - `discharge_diff_1`
 - `month`
+- `prcp_lag1`, `prcp_lag2`, `prcp_lag3`
+- `prcp_roll_sum_3`, `prcp_roll_sum_7`
+- `prcp_roll_mean_3`, `prcp_roll_mean_7`
+- `heavy_rain_flag_1d`
+- `tmax`, `tmin`, `tavg`, `temp_range`
+- `awnd`, `snow`, `snow_depth`
+- `prcp_x_discharge_lag1`
+- `prcp_roll_sum_3_x_discharge_roll_mean_3`
 
 Target is generated as:
 
@@ -101,6 +109,23 @@ Rows with `NaN` in required feature/target fields are dropped.
 - `discharge_roll_mean_7`
 - `discharge_diff_1`
 - `month`
+- `prcp_lag1`
+- `prcp_lag2`
+- `prcp_lag3`
+- `prcp_roll_sum_3`
+- `prcp_roll_sum_7`
+- `prcp_roll_mean_3`
+- `prcp_roll_mean_7`
+- `heavy_rain_flag_1d`
+- `tmax`
+- `tmin`
+- `tavg`
+- `temp_range`
+- `awnd`
+- `snow`
+- `snow_depth`
+- `prcp_x_discharge_lag1`
+- `prcp_roll_sum_3_x_discharge_roll_mean_3`
 - `threshold`
 - `discharge_next_day`
 - `target`
@@ -120,7 +145,7 @@ Rows with `NaN` in required feature/target fields are dropped.
 - Provider: NOAA NCEI Climate Data Online (CDO)
 - Endpoint: `https://www.ncei.noaa.gov/cdo-web/api/v2/data`
 - Dataset ID: `GHCND`
-- Data types fetched: `PRCP`, `TMAX`, `TMIN`
+- Data types fetched: `PRCP`, `TMAX`, `TMIN` (with optional `AWND`, `SNOW`, `SNWD` when available)
 - Units: metric
 - Authentication: required CDO token (`--token` or `NOAA_CDO_TOKEN` env var)
 
@@ -194,6 +219,8 @@ or pass token directly:
 ```bash
 python -m data_ingestion.fetch_weather --sites-config data_ingestion/sites.json --start-date 2015-01-01 --end-date 2023-12-31 --out-dir data/raw/noaa --token your_token_here
 ```
+
+Note: NOAA CDO rejects date spans >= 1 year in one request; the script automatically paginates by sub-year windows and merges results.
 
 ### Station mapping behavior
 
