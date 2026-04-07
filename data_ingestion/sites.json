@@ -1,0 +1,19 @@
+{
+  "sites": [
+    {"site_id": "01646500", "name": "Potomac River at Point of Rocks, MD"},
+    {"site_id": "02087500", "name": "Neuse River near Clayton, NC"},
+    {"site_id": "03015500", "name": "Allegheny River at Eldred, PA"},
+    {"site_id": "05054000", "name": "Red River of the North at Fargo, ND"},
+    {"site_id": "06710247", "name": "Cherry Creek at Denver, CO"},
+    {"site_id": "08066500", "name": "Trinity River at Romayor, TX"},
+    {"site_id": "09380000", "name": "Colorado River near Lees Ferry, AZ"},
+    {"site_id": "11447650", "name": "Sacramento River at Verona, CA"},
+    {"site_id": "12301933", "name": "Clark Fork above Missoula, MT"},
+    {"site_id": "14211720", "name": "Willamette River at Portland, OR"}
+  ],
+  "notes": {
+    "schema": "Add one object per USGS gauge. Only site_id is required.",
+    "source": "USGS NWIS site numbers"
+  }
+}
+
