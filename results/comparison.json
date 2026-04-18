@@ -1,0 +1,40 @@
+{
+  "model": {
+    "validation": {
+      "accuracy": 0.9633507853403142,
+      "precision": 0.23529411764705882,
+      "recall": 0.8,
+      "f1": 0.36363636363636365
+    },
+    "test": {
+      "accuracy": 0.9321148825065274,
+      "precision": 0.5510204081632653,
+      "recall": 0.8709677419354839,
+      "f1": 0.675
+    },
+    "test_roc_auc": 0.9782807917888563
+  },
+  "lightgbm": {
+    "validation": {
+      "accuracy": 0.9947643979057592,
+      "precision": 1.0,
+      "recall": 0.6,
+      "f1": 0.75
+    },
+    "test": {
+      "accuracy": 0.9660574412532638,
+      "precision": 0.8461538461538461,
+      "recall": 0.7096774193548387,
+      "f1": 0.7719298245614035
+    },
+    "test_roc_auc": 0.9843291788856304
+  },
+  "summary": {
+    "best_model_by_test_f1": "lightgbm",
+    "best_model_by_test_roc_auc": "lightgbm",
+    "n_rows": 2550,
+    "n_train": 1785,
+    "n_val": 382,
+    "n_test": 383
+  }
+}
