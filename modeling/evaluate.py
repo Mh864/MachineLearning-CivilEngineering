@@ -75,6 +75,8 @@ def compare_models(
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
     df["target"] = pd.to_numeric(df["target"], errors="coerce")
     df = df.dropna(subset=["date", "target"]).sort_values(["site_id", "date"]).reset_index(drop=True)
+    # Same row set as training / single-model evaluate (chronological split on complete feature rows)
+    df = df[["site_id", "date"] + list(FEATURE_COLUMNS) + ["target"]].dropna()
 
     split = time_based_split(df, time_col="date", target_col="target", train_frac=0.70, val_frac=0.15)
     y_val_true = split.y_val.astype(int)
