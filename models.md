@@ -131,6 +131,61 @@ No clustering, anomaly detection, PCA, autoencoders, or self-supervised modules 
 5. Stress-test forecast horizon (`modeling/lead_time.py`)
 6. Serve predictions (`api/predict.py` through `api/app.py`)
 
-## 7) Current practical note
+## 7) Metrics explained
+
+The project currently reports these metrics in `results/metrics_*.json` and `results/comparison.json`.
+
+### Accuracy
+
+- Meaning: fraction of all predictions that are correct.
+- Formula: `(TP + TN) / (TP + TN + FP + FN)`
+- Interpretation here: useful as a broad signal, but can be misleading when flood events (positive class) are rarer than non-events.
+
+### Precision
+
+- Meaning: among predicted positives, how many were actually positive.
+- Formula: `TP / (TP + FP)`
+- Interpretation here: higher precision means fewer false flood alarms.
+
+### Recall
+
+- Meaning: among actual positives, how many were detected.
+- Formula: `TP / (TP + FN)`
+- Interpretation here: higher recall means fewer missed flood-risk events.
+
+### F1 score
+
+- Meaning: harmonic mean of precision and recall.
+- Formula: `2 * (precision * recall) / (precision + recall)`
+- Interpretation here: best single metric when you care about balancing missed events and false alarms.
+
+### ROC-AUC (comparison mode)
+
+- Meaning: ranking quality across thresholds using predicted probabilities.
+- Range: `0.5` (random) to `1.0` (perfect).
+- Interpretation here: useful for threshold tuning and model comparison beyond a fixed cutoff.
+
+### Why F1 and recall matter most for this task
+
+For flood-risk prediction, missing an event can be costly, so recall is critical.  
+At the same time, excessive false alarms reduce trust, so precision also matters.  
+F1 is a practical balance between both.
+
+### Current run snapshot (latest retraining)
+
+- Baseline (`LogisticRegression`):
+  - Validation: `accuracy=0.9634`, `precision=0.2353`, `recall=0.8000`, `f1=0.3636`
+  - Test: `accuracy=0.9321`, `precision=0.5510`, `recall=0.8710`, `f1=0.6750`, `roc_auc=0.9783`
+- LightGBM (`LGBMClassifier`):
+  - Validation: `accuracy=0.9948`, `precision=1.0000`, `recall=0.6000`, `f1=0.7500`
+  - Test: `accuracy=0.9661`, `precision=0.8462`, `recall=0.7097`, `f1=0.7719`, `roc_auc=0.9843`
+
+### Practical interpretation of the current results
+
+- LightGBM is better overall on test set (`f1` and `roc_auc` higher).
+- Baseline has higher recall on test (captures more positives) but much lower precision (more false alarms).
+- LightGBM is a stronger default deployment candidate, while baseline can remain a high-recall benchmark.
+
+## 8) Current practical note
 
 The training feature set now includes NOAA weather-derived features and interaction terms. The API inference path has been updated to accept optional weather inputs (`recent_prcp`, `tmax`, `tmin`, `awnd`, `snow`, `snow_depth`) and remains backward-compatible by defaulting missing weather values.
