@@ -1,0 +1,42 @@
+{
+  "train_majority_class": 0,
+  "split": {
+    "train_frac": 0.7,
+    "val_frac": 0.15
+  },
+  "descriptions": {
+    "persistence": "Predict today's class using yesterday's realized label for the same USGS site (aligned to the same time-ordered rows as time_based_split).",
+    "majority": "Always predict the majority class observed on the training slice."
+  },
+  "validation": {
+    "persistence": {
+      "accuracy": 0.9806535947712418,
+      "precision": 0.9029649595687331,
+      "recall": 0.8981233243967829,
+      "f1": 0.9005376344086021
+    },
+    "majority_class": {
+      "accuracy": 0.9024836601307189,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    }
+  },
+  "test": {
+    "persistence": {
+      "accuracy": 0.9694117647058823,
+      "precision": 0.8663594470046083,
+      "recall": 0.864367816091954,
+      "f1": 0.8653624856156502
+    },
+    "majority_class": {
+      "accuracy": 0.8862745098039215,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    }
+  },
+  "n_train": 17850,
+  "n_val": 3825,
+  "n_test": 3825
+}

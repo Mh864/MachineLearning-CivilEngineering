@@ -148,22 +148,127 @@ def compare_models(
     return out_path
 
 
+def evaluate_naive_baselines(
+    *,
+    features_path: str | Path = "data/processed/features.csv",
+    out_path: str | Path = "results/naive_baselines.json",
+) -> Path:
+    """
+    Non-ML baselines on the same chronological split as `compare_models`:
+    - persistence: y_hat(t) = y(t-1) within each site (previous calendar row for that gauge)
+    - majority: always predict the training-set majority class
+    """
+    df = pd.read_csv(features_path, dtype={"site_id": "string"})
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["target"] = pd.to_numeric(df["target"], errors="coerce")
+    df = df.dropna(subset=["date", "target"]).sort_values(["site_id", "date"]).reset_index(drop=True)
+
+    df = df.sort_values(["date", "site_id"]).reset_index(drop=True)
+    df["target_persist"] = df.groupby("site_id")["target"].shift(1)
+
+    split = time_based_split(
+        df.drop(columns=["target_persist"]),
+        time_col="date",
+        target_col="target",
+        train_frac=0.70,
+        val_frac=0.15,
+    )
+
+    maj = int(split.y_train.astype(int).mode().iloc[0])
+
+    def _persist(y_true: pd.Series, idx: pd.Index) -> dict[str, float] | None:
+        persist = df.loc[idx, "target_persist"]
+        m = persist.notna()
+        if int(m.sum()) == 0:
+            return None
+        return _metrics(y_true[m].astype(int), persist[m].astype(int))
+
+    val_maj = _metrics(
+        split.y_val.astype(int),
+        pd.Series([maj] * len(split.y_val), index=split.y_val.index),
+    )
+    test_maj = _metrics(
+        split.y_test.astype(int),
+        pd.Series([maj] * len(split.y_test), index=split.y_test.index),
+    )
+
+    results = {
+        "train_majority_class": maj,
+        "split": {"train_frac": 0.70, "val_frac": 0.15},
+        "descriptions": {
+            "persistence": (
+                "Predict today's class using yesterday's realized label for the same USGS site "
+                "(aligned to the same time-ordered rows as time_based_split)."
+            ),
+            "majority": "Always predict the majority class observed on the training slice.",
+        },
+        "validation": {
+            "persistence": _persist(split.y_val, split.X_val.index),
+            "majority_class": val_maj,
+        },
+        "test": {
+            "persistence": _persist(split.y_test, split.X_test.index),
+            "majority_class": test_maj,
+        },
+        "n_train": int(len(split.X_train)),
+        "n_val": int(len(split.X_val)),
+        "n_test": int(len(split.X_test)),
+    }
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(results, indent=2), encoding="utf-8")
+    return out_path
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Evaluate model on validation and test splits; save metrics.json.")
     p.add_argument("--features-path", type=str, default="data/processed/features.csv")
     p.add_argument("--model-path", type=str, default="models/model.pkl")
     p.add_argument("--out-path", type=str, default="results/metrics.json")
     p.add_argument("--compare", action="store_true")
-    p.add_argument("--model-paths", nargs="+")
+    p.add_argument(
+        "--model-paths",
+        nargs="+",
+        help="Two or more .pkl artifacts to compare. If omitted with --compare, uses models/model.pkl and models/lgbm_model.pkl when both exist.",
+    )
+    p.add_argument(
+        "--naive-baselines",
+        action="store_true",
+        help="Only compute persistence + majority baselines; writes separate JSON (default results/naive_baselines.json).",
+    )
     return p
 
 
 def main() -> int:
     args = build_arg_parser().parse_args()
+    if args.naive_baselines:
+        out_path = args.out_path
+        if out_path == "results/metrics.json":
+            out_path = "results/naive_baselines.json"
+        out = evaluate_naive_baselines(features_path=args.features_path, out_path=out_path)
+        print(f"Wrote naive baselines: {out.as_posix()}")
+        return 0
     if args.compare:
-        if not args.model_paths:
-            raise ValueError("--model-paths is required when --compare is used.")
-        out = compare_models(features_path=args.features_path, model_paths=args.model_paths, out_path=args.out_path)
+        if args.model_paths:
+            model_paths = list(args.model_paths)
+            for p in model_paths:
+                if not Path(p).is_file():
+                    raise FileNotFoundError(f"Model artifact not found: {p}")
+        else:
+            default_paths = ["models/model.pkl", "models/lgbm_model.pkl"]
+            model_paths = [p for p in default_paths if Path(p).is_file()]
+            if len(model_paths) < 2:
+                raise FileNotFoundError(
+                    "Compare mode needs at least two trained artifacts. Either train both models first "
+                    f"(expected {default_paths}) or pass explicit paths, e.g.\n"
+                    '  python -m modeling.evaluate --compare --model-paths models/model.pkl models/lgbm_model.pkl'
+                )
+        if args.out_path == "results/metrics.json":
+            args.out_path = "results/comparison.json"
+        out = compare_models(
+            features_path=args.features_path, model_paths=model_paths, out_path=args.out_path
+        )
         print(f"Wrote comparison: {out.as_posix()}")
     else:
         out = evaluate_model(features_path=args.features_path, model_path=args.model_path, metrics_out_path=args.out_path)

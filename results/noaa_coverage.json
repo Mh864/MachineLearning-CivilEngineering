@@ -1,0 +1,126 @@
+{
+  "noaa_dir": "data/raw/noaa",
+  "expected_calendar_range": {
+    "start": "2018-01-01",
+    "end": "2024-12-31"
+  },
+  "mapping_source": "data_ingestion/fetch_weather.SITE_TO_NOAA + SITE_TO_STATION (overridable via sites.json noaa_station_id)",
+  "all_sites_ok": false,
+  "sites": [
+    {
+      "site_id": "01646500",
+      "location_name": "Potomac_DC",
+      "noaa_station_id": "GHCND:USW00013743",
+      "file": "data/raw/noaa/rainfall_Potomac_DC.csv",
+      "status": "ok",
+      "n_rows": 2557,
+      "date_min": "2018-01-01",
+      "date_max": "2024-12-31",
+      "expected_range_covered": true,
+      "internal_date_gaps_gt1d": 0
+    },
+    {
+      "site_id": "02087500",
+      "location_name": "Neuse_NC",
+      "noaa_station_id": "GHCND:USW00013722",
+      "file": "data/raw/noaa/rainfall_Neuse_NC.csv",
+      "status": "ok",
+      "n_rows": 2557,
+      "date_min": "2018-01-01",
+      "date_max": "2024-12-31",
+      "expected_range_covered": true,
+      "internal_date_gaps_gt1d": 0
+    },
+    {
+      "site_id": "03015500",
+      "location_name": "Allegheny_PA",
+      "noaa_station_id": "GHCND:USW00014735",
+      "file": "data/raw/noaa/rainfall_Allegheny_PA.csv",
+      "status": "ok",
+      "n_rows": 2557,
+      "date_min": "2018-01-01",
+      "date_max": "2024-12-31",
+      "expected_range_covered": true,
+      "internal_date_gaps_gt1d": 0
+    },
+    {
+      "site_id": "05054000",
+      "location_name": "RedRiver_ND",
+      "noaa_station_id": "GHCND:USW00014914",
+      "file": "data/raw/noaa/rainfall_RedRiver_ND.csv",
+      "status": "ok",
+      "n_rows": 2557,
+      "date_min": "2018-01-01",
+      "date_max": "2024-12-31",
+      "expected_range_covered": true,
+      "internal_date_gaps_gt1d": 0
+    },
+    {
+      "site_id": "06710247",
+      "location_name": "CherryCreek_CO",
+      "noaa_station_id": "GHCND:USW00023062",
+      "file": "data/raw/noaa/rainfall_CherryCreek_CO.csv",
+      "status": "ok",
+      "n_rows": 2557,
+      "date_min": "2018-01-01",
+      "date_max": "2024-12-31",
+      "expected_range_covered": true,
+      "internal_date_gaps_gt1d": 0
+    },
+    {
+      "site_id": "08066500",
+      "location_name": "Trinity_TX",
+      "noaa_station_id": "GHCND:USW00012960",
+      "file": "data/raw/noaa/rainfall_Trinity_TX.csv",
+      "status": "ok",
+      "n_rows": 2557,
+      "date_min": "2018-01-01",
+      "date_max": "2024-12-31",
+      "expected_range_covered": true,
+      "internal_date_gaps_gt1d": 0
+    },
+    {
+      "site_id": "09380000",
+      "location_name": "Colorado_AZ",
+      "noaa_station_id": "GHCND:USW00023195",
+      "file": "data/raw/noaa/rainfall_Colorado_AZ.csv",
+      "status": "missing_file"
+    },
+    {
+      "site_id": "11425500",
+      "location_name": "Sacramento_CA",
+      "noaa_station_id": "GHCND:USW00023232",
+      "file": "data/raw/noaa/rainfall_Sacramento_CA.csv",
+      "status": "ok",
+      "n_rows": 2557,
+      "date_min": "2018-01-01",
+      "date_max": "2024-12-31",
+      "expected_range_covered": true,
+      "internal_date_gaps_gt1d": 0
+    },
+    {
+      "site_id": "12301933",
+      "location_name": "ClarkFork_MT",
+      "noaa_station_id": "GHCND:USW00024153",
+      "file": "data/raw/noaa/rainfall_ClarkFork_MT.csv",
+      "status": "ok",
+      "n_rows": 2557,
+      "date_min": "2018-01-01",
+      "date_max": "2024-12-31",
+      "expected_range_covered": true,
+      "internal_date_gaps_gt1d": 0
+    },
+    {
+      "site_id": "14211720",
+      "location_name": "Willamette_OR",
+      "noaa_station_id": "GHCND:USW00024229",
+      "file": "data/raw/noaa/rainfall_Willamette_OR.csv",
+      "status": "ok",
+      "n_rows": 2557,
+      "date_min": "2018-01-01",
+      "date_max": "2024-12-31",
+      "expected_range_covered": true,
+      "internal_date_gaps_gt1d": 0
+    }
+  ]
+}

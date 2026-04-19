@@ -33,7 +33,7 @@ def train_baseline_model(
     y_train = split.y_train.astype(int)
 
     model = Pipeline(
-        steps=[
+        [
             ("scaler", StandardScaler()),
             (
                 "clf",
@@ -46,6 +46,7 @@ def train_baseline_model(
     artifact = {
         "model": model,
         "feature_columns": FEATURE_COLUMNS,
+        "model_name": "logistic_baseline",
     }
 
     model_out_path = Path(model_out_path)
@@ -84,7 +85,6 @@ def train_lightgbm_model(
         class_weight="balanced",
         random_state=42,
         n_jobs=-1,
-        verbosity=-1,
     )
     model.fit(X_train, y_train)
 

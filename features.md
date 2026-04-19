@@ -47,13 +47,20 @@ Then NOAA daily weather data from `data/raw/noaa` is merged by `site_id` + `date
 
 Rows are sorted per site by date before any lag/rolling operation.
 
+### Join choice and missing weather
+
+- For each USGS site, weather rows are selected from the merged NOAA table for that `site_id` and merged onto the local daily discharge timeline with a **`left` join on `date`** (discharge timeline is authoritative).
+- If no NOAA row exists for a given day, precipitation and temperature fields are missing until filled.
+- **Post-merge fills** (in `_add_features_per_site`): `prcp`, `tmax`, `tmin`, `awnd`, `snow`, and snow depth (`snwd` → `snow_depth`) missing values are replaced with **`0.0`** so every training row has numeric inputs. This matches the API behavior when optional weather arrays are omitted (inference defaults to zeros for same-day weather scalars derived from the last day of the window).
+- Duplicate `(site_id, date)` rows in merged NOAA input are **deduplicated** in `load_noaa_weather` (`keep="last"`).
+
 ## Feature-by-feature explanation
 
 ### 1) `discharge_lag1`
 
-- Definition: discharge value at day `t`
-- What it does: gives the model the latest observed river state, which is often the strongest single predictor for near-term flow risk.
-- Why it helps: flood risk tomorrow is usually correlated with how high the river is today.
+- Definition: **previous-day** discharge (`discharge.shift(1)` at calendar row `t`), i.e. discharge observed at **`t-1`**, not same-day `t`.
+- What it does: gives the model the most recent **prior** river state used for predicting **next-day** exceedance.
+- Why it helps: aligns with the binary target on `t+1` without leaking same-day discharge at `t` into the label.
 
 ### 2) `discharge_lag2`
 

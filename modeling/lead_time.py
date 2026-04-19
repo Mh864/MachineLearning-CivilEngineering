@@ -17,6 +17,7 @@ def analyze_lead_times(
     *,
     clean_path: str | Path = "data/processed/clean_data.csv",
     model_path: str | Path = "models/lgbm_model.pkl",
+    noaa_dir: str | Path = "data/raw/noaa",
     lead_days: list[int] = None,
     out_path: str | Path = "results/lead_time_analysis.json",
 ) -> Path:
@@ -37,7 +38,7 @@ def analyze_lead_times(
     artifact = joblib.load(model_path)
     model = artifact["model"]
     feature_cols = artifact.get("feature_columns", FEATURE_COLUMNS)
-    noaa_by_location = load_noaa_precip("data/raw/noaa")
+    noaa_by_location = load_noaa_precip(noaa_dir)
 
     results: dict[str, object] = {}
     f1_by_lead: dict[int, float] = {}
@@ -90,12 +91,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--clean-path", type=str, default="data/processed/clean_data.csv")
     p.add_argument("--model-path", type=str, default="models/lgbm_model.pkl")
     p.add_argument("--out-path", type=str, default="results/lead_time_analysis.json")
+    p.add_argument("--noaa-dir", type=str, default="data/raw/noaa", help="Directory with rainfall_*.csv for feature rebuild")
     return p
 
 
 def main() -> int:
     args = build_arg_parser().parse_args()
-    out = analyze_lead_times(clean_path=args.clean_path, model_path=args.model_path, out_path=args.out_path)
+    out = analyze_lead_times(
+        clean_path=args.clean_path,
+        model_path=args.model_path,
+        noaa_dir=args.noaa_dir,
+        out_path=args.out_path,
+    )
     print(f"Wrote lead-time analysis: {out.as_posix()}")
     return 0
 

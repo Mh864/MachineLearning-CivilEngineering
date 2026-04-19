@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
@@ -21,6 +22,8 @@ app.add_middleware(
 )
 
 _artifact = None
+_artifact_path: str | None = None
+_API_START_TIME = time.time()
 
 USGS_RAW_DIR = Path("data/raw/usgs")
 NOAA_DIR = Path("data/raw/noaa")
@@ -93,10 +96,11 @@ SITE_TO_NOAA = {
 }
 
 
-def _load_artifact():
+def _load_artifact_pair() -> tuple[Any, str]:
+    """Prefer LightGBM artifact if present, else logistic Pipeline artifact."""
     for path in ["models/lgbm_model.pkl", "models/model.pkl"]:
         if Path(path).exists():
-            return load_model_artifact(path)
+            return load_model_artifact(path), path
     raise FileNotFoundError("No model file found in models/")
 
 
@@ -135,8 +139,19 @@ def _normalize_usgs_site_column(series: pd.Series) -> pd.Series:
 
 @app.on_event("startup")
 def _startup() -> None:
-    global _artifact
-    _artifact = _load_artifact()
+    global _artifact, _artifact_path
+    _artifact, _artifact_path = _load_artifact_pair()
+
+
+@app.get("/health")
+def health() -> dict:
+    """Liveness/readiness probe and simple deployment metadata."""
+    return {
+        "status": "ok",
+        "model_loaded": _artifact is not None,
+        "artifact_path": _artifact_path,
+        "uptime_seconds": round(time.time() - _API_START_TIME, 3),
+    }
 
 
 @app.get("/latest")
@@ -207,6 +222,9 @@ def get_latest(
     rainfall_mm = [0.0] * 7
     tmax_c = [0.0] * 7
     tmin_c = [0.0] * 7
+    awnd = [0.0] * 7
+    snow = [0.0] * 7
+    snow_depth = [0.0] * 7
     weather_available = False
 
     if noaa_slug:
@@ -225,12 +243,24 @@ def get_latest(
                 prcp_by_date = dict(zip(noaa["day"], noaa["PRCP"]))
                 tmax_by_date: dict[str, float] = {}
                 tmin_by_date: dict[str, float] = {}
+                awnd_by_date: dict[str, float] = {}
+                snow_by_date: dict[str, float] = {}
+                snwd_by_date: dict[str, float] = {}
                 if "TMAX" in noaa.columns:
                     noaa["TMAX"] = pd.to_numeric(noaa["TMAX"], errors="coerce").fillna(0.0)
                     tmax_by_date = dict(zip(noaa["day"], noaa["TMAX"]))
                 if "TMIN" in noaa.columns:
                     noaa["TMIN"] = pd.to_numeric(noaa["TMIN"], errors="coerce").fillna(0.0)
                     tmin_by_date = dict(zip(noaa["day"], noaa["TMIN"]))
+                if "AWND" in noaa.columns:
+                    noaa["AWND"] = pd.to_numeric(noaa["AWND"], errors="coerce").fillna(0.0)
+                    awnd_by_date = dict(zip(noaa["day"], noaa["AWND"]))
+                if "SNOW" in noaa.columns:
+                    noaa["SNOW"] = pd.to_numeric(noaa["SNOW"], errors="coerce").fillna(0.0)
+                    snow_by_date = dict(zip(noaa["day"], noaa["SNOW"]))
+                if "SNWD" in noaa.columns:
+                    noaa["SNWD"] = pd.to_numeric(noaa["SNWD"], errors="coerce").fillna(0.0)
+                    snwd_by_date = dict(zip(noaa["day"], noaa["SNWD"]))
                 if not tmax_by_date and not tmin_by_date:
                     weather_available = False
                 for i, d in enumerate(dates_dt):
@@ -238,6 +268,9 @@ def get_latest(
                     rainfall_mm[i] = round(float(prcp_by_date.get(day_key, 0.0)), 1)
                     tmax_c[i] = round(float(tmax_by_date.get(day_key, 0.0)), 1)
                     tmin_c[i] = round(float(tmin_by_date.get(day_key, 0.0)), 1)
+                    awnd[i] = round(float(awnd_by_date.get(day_key, 0.0)), 3)
+                    snow[i] = round(float(snow_by_date.get(day_key, 0.0)), 1)
+                    snow_depth[i] = round(float(snwd_by_date.get(day_key, 0.0)), 1)
 
     latest_date = dates[-1]
 
@@ -249,6 +282,9 @@ def get_latest(
         "rainfall_available": rainfall_available,
         "tmax_c": tmax_c,
         "tmin_c": tmin_c,
+        "awnd": awnd,
+        "snow": snow,
+        "snow_depth": snow_depth,
         "weather_available": weather_available,
         "latest_date": latest_date,
         "data_start": data_start,
@@ -275,9 +311,9 @@ def predict(
     snow_depth: Optional[str] = Query(None, description="Reserved: optional comma-separated snow depth series."),
     heavy_rain_threshold: Optional[float] = Query(None, description="Reserved: heavy rain threshold (mm)."),
 ):
-    global _artifact
+    global _artifact, _artifact_path
     if _artifact is None:
-        _artifact = _load_artifact()
+        _artifact, _artifact_path = _load_artifact_pair()
 
     recent = [float(x.strip()) for x in recent_discharge.split(",") if x.strip() != ""]
     if len(recent) < 7:

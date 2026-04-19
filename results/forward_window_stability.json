@@ -1,0 +1,59 @@
+{
+  "model_path": "models/lgbm_model.pkl",
+  "n_windows": 4,
+  "n_test_rows_used": 3825,
+  "windows": [
+    {
+      "window_index": 0,
+      "n_rows": 956,
+      "date_start": "2023-12-14",
+      "date_end": "2024-03-19",
+      "metrics": {
+        "accuracy": 0.9194560669456067,
+        "precision": 0.6836734693877551,
+        "recall": 0.8993288590604027,
+        "f1": 0.7768115942028986
+      },
+      "test_roc_auc": 0.9685054431442995
+    },
+    {
+      "window_index": 1,
+      "n_rows": 956,
+      "date_start": "2024-03-19",
+      "date_end": "2024-06-22",
+      "metrics": {
+        "accuracy": 0.9121338912133892,
+        "precision": 0.6878048780487804,
+        "recall": 0.8757763975155279,
+        "f1": 0.7704918032786885
+      },
+      "test_roc_auc": 0.9674362279776554
+    },
+    {
+      "window_index": 2,
+      "n_rows": 956,
+      "date_start": "2024-06-22",
+      "date_end": "2024-09-26",
+      "metrics": {
+        "accuracy": 0.9571129707112971,
+        "precision": 0.6111111111111112,
+        "recall": 0.6226415094339622,
+        "f1": 0.616822429906542
+      },
+      "test_roc_auc": 0.9418291230489564
+    },
+    {
+      "window_index": 3,
+      "n_rows": 957,
+      "date_start": "2024-09-26",
+      "date_end": "2024-12-30",
+      "metrics": {
+        "accuracy": 0.9508881922675027,
+        "precision": 0.6404494382022472,
+        "recall": 0.7916666666666666,
+        "f1": 0.7080745341614907
+      },
+      "test_roc_auc": 0.9695072190834902
+    }
+  ]
+}
