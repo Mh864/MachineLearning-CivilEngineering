@@ -59,7 +59,6 @@ results/
   lead_time_analysis.json
 
 frontend1/               Next.js app (dashboard)
-frontend/vite-project/   Legacy Vite scaffold
 
 run_api.py               Run API with repo root on sys.path
 run_pipeline.py          End-to-end ML steps
@@ -146,10 +145,17 @@ python run_api.py
 
 On this snapshot the logistic baseline **slightly outperforms LightGBM on test F1**; LightGBM often leads on **ROC-AUC** (~0.98). Always trust a fresh `results/comparison.json` after retraining.
 
-## Frontend
+## Frontend (`frontend1/`)
 
-- **Primary:** `frontend1/` (Next.js). Set `NEXT_PUBLIC_API_URL` if the API is not at `http://127.0.0.1:8000`.
-- **Legacy:** `frontend/vite-project/` — see that folder’s README.
+Next.js App Router UI for the dashboard. From repo root:
+
+```bash
+cd frontend1
+npm install
+npm run dev
+```
+
+Set **`NEXT_PUBLIC_API_URL`** if the FastAPI backend is not at `http://127.0.0.1:8000` (no trailing slash). Run **`python run_api.py`** in a separate terminal so the UI can reach `/latest` and `/predict`.
 
 ## Documentation
 
