@@ -3,17 +3,21 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { StationSelector } from "./StationSelector"
+import { SevenDayInputs, type FeatureField } from "./SevenDayInputs"
 import type { Station } from "@/lib/constants"
-import { parseDischargeInput } from "@/lib/api"
 import { AlertCircle, Loader2, Waves } from "lucide-react"
 
 interface PredictionCardProps {
   selectedStation: Station
   onStationChange: (station: Station) => void
-  dischargeInput: string
-  onDischargeChange: (value: string) => void
+  windowDates: string[] | null
+  discharge: number[]
+  prcp: number[]
+  tmax: number[]
+  tmin: number[]
+  onSeriesCellChange: (field: FeatureField, index: number, value: number) => void
+  weatherHint: string | null
   onPredict: () => void
   isLoading: boolean
   error: string | null
@@ -26,11 +30,20 @@ interface PredictionCardProps {
   onWindowEndDateChange: (isoDate: string) => void
 }
 
+function countFiniteDischarge(arr: number[]): number {
+  return arr.filter((n) => Number.isFinite(n)).length
+}
+
 export function PredictionCard({
   selectedStation,
   onStationChange,
-  dischargeInput,
-  onDischargeChange,
+  windowDates,
+  discharge,
+  prcp,
+  tmax,
+  tmin,
+  onSeriesCellChange,
+  weatherHint,
   onPredict,
   isLoading,
   error,
@@ -42,9 +55,8 @@ export function PredictionCard({
   windowEndDate,
   onWindowEndDateChange,
 }: PredictionCardProps) {
-  const parsedValues = parseDischargeInput(dischargeInput)
-  const valueCount = parsedValues.length
-  const isValid = valueCount >= 7
+  const valueCount = countFiniteDischarge(discharge)
+  const isValid = discharge.length >= 7 && discharge.slice(0, 7).every((n) => Number.isFinite(n))
 
   return (
     <Card className="h-fit">
@@ -89,36 +101,36 @@ export function PredictionCard({
               className="font-mono text-sm"
             />
             <p className="text-xs text-muted-foreground">
-              USGS data available {dataRangeStart} → {dataRangeEnd}. The chart uses
-              the seven days ending on this date.
+              USGS data available {dataRangeStart} → {dataRangeEnd}. The chart uses the seven days
+              ending on this date.
             </p>
           </div>
         ) : null}
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">
-            Recent Discharge Values
-          </label>
-          <Textarea
-            placeholder="Enter 7 or more comma-separated discharge values (ft³/s)&#10;Example: 1200, 1350, 1400, 1280, 1500, 1620, 1580"
-            value={dischargeInput}
-            onChange={(e) => onDischargeChange(e.target.value)}
-            className="min-h-[100px] resize-none font-mono text-sm"
-          />
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">
-              {valueCount} value{valueCount !== 1 ? "s" : ""} entered
+        <SevenDayInputs
+          dates={windowDates}
+          discharge={discharge}
+          prcp={prcp}
+          tmax={tmax}
+          tmin={tmin}
+          onCellChange={onSeriesCellChange}
+          disabled={latestLoading}
+          weatherHint={weatherHint}
+        />
+
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">
+            Discharge: {valueCount} / 7 days filled
+          </span>
+          {valueCount > 0 && valueCount < 7 && (
+            <span className="text-amber-600 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              Enter all 7 discharge values
             </span>
-            {valueCount > 0 && valueCount < 7 && (
-              <span className="text-amber-600 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                Need at least 7 values
-              </span>
-            )}
-            {isValid && (
-              <span className="text-emerald-600">Ready to predict</span>
-            )}
-          </div>
+          )}
+          {isValid && (
+            <span className="text-emerald-600">Ready to predict</span>
+          )}
         </div>
 
         {error && (

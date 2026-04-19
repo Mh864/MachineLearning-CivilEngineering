@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { format, parseISO } from "date-fns"
 import { Header } from "@/components/flood/Header"
 import { PredictionCard } from "@/components/flood/PredictionCard"
+import type { FeatureField } from "@/components/flood/SevenDayInputs"
 import { ResultPanel } from "@/components/flood/ResultPanel"
 import { DischargeChart } from "@/components/flood/DischargeChart"
 import { STATIONS, type Station } from "@/lib/constants"
@@ -11,69 +12,128 @@ import {
   checkApiStatus,
   getLatestData,
   getPrediction,
-  parseDischargeInput,
   type PredictionResponse,
   type ApiError,
 } from "@/lib/api"
+
+function nan7(): number[] {
+  return Array.from({ length: 7 }, () => NaN)
+}
+
+function ensure7(arr: number[], pad: number): number[] {
+  const s = arr.slice(0, 7)
+  const out = [...s]
+  while (out.length < 7) out.push(pad)
+  return out
+}
+
+function optionalFinite7(arr: number[]): number[] | undefined {
+  const s = arr.slice(0, 7)
+  if (s.length < 7) return undefined
+  if (!s.every(Number.isFinite)) return undefined
+  return s
+}
 
 function formatAutofillLabel(dates: string[]): string {
   if (dates.length === 0) return ""
   const first = parseISO(dates[0])
   const last = parseISO(dates[dates.length - 1])
-  return `Auto-filled from USGS data — ${format(first, "MMM d")} to ${format(last, "MMM d, yyyy")}`
+  return `Auto-filled from USGS + NOAA — ${format(first, "MMM d")} to ${format(last, "MMM d, yyyy")}`
 }
 
 export default function Dashboard() {
   const [apiStatus, setApiStatus] = useState<boolean | null>(null)
   const [selectedStation, setSelectedStation] = useState<Station>(STATIONS[0])
-  const [dischargeInput, setDischargeInput] = useState("")
+  const [dischargeSeries, setDischargeSeries] = useState<number[]>(nan7)
+  const [prcpSeries, setPrcpSeries] = useState<number[]>(nan7)
+  const [tmaxSeries, setTmaxSeries] = useState<number[]>(nan7)
+  const [tminSeries, setTminSeries] = useState<number[]>(nan7)
+  const [windowDates, setWindowDates] = useState<string[] | null>(null)
+  const [weatherMeta, setWeatherMeta] = useState<{
+    rainfallAvailable: boolean
+    weatherAvailable: boolean
+  } | null>(null)
+
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<PredictionResponse | null>(null)
   const [latestLoading, setLatestLoading] = useState(false)
   const [latestError, setLatestError] = useState<string | null>(null)
   const [autofillLabel, setAutofillLabel] = useState<string | null>(null)
-  const [rainfallMm, setRainfallMm] = useState<number[] | null>(null)
-  const [tmaxSeries, setTmaxSeries] = useState<number[] | null>(null)
-  const [tminSeries, setTminSeries] = useState<number[] | null>(null)
   const [dataRangeStart, setDataRangeStart] = useState<string | null>(null)
   const [dataRangeEnd, setDataRangeEnd] = useState<string | null>(null)
-  /** Last day of the loaded USGS window — passed as as_of_date so month matches training. */
   const [seriesAsOfDate, setSeriesAsOfDate] = useState<string | null>(null)
 
-  const parsedValues = parseDischargeInput(dischargeInput)
+  const weatherHint = useMemo(() => {
+    if (!weatherMeta) return null
+    if (!weatherMeta.rainfallAvailable && !weatherMeta.weatherAvailable) {
+      return "NOAA daily file not matched for this gauge/date window. Precipitation and temperature fields show 0 — the API and training pipeline use the same neutral fill when weather is missing."
+    }
+    if (!weatherMeta.weatherAvailable) {
+      return "NOAA temperature fields were not available for part of this window; values may be 0 °C where the backend filled missing data."
+    }
+    return null
+  }, [weatherMeta])
+
+  const chartDischargeValues = useMemo(() => {
+    const d = dischargeSeries.slice(0, 7)
+    return d.length === 7 && d.every(Number.isFinite) ? d : []
+  }, [dischargeSeries])
 
   useEffect(() => {
     checkApiStatus().then(setApiStatus)
   }, [])
+
+  const handleSeriesCellChange = useCallback(
+    (field: FeatureField, index: number, value: number) => {
+      const patch = (prev: number[]) => {
+        const n = [...prev]
+        while (n.length < 7) n.push(NaN)
+        n[index] = value
+        return n.slice(0, 7)
+      }
+      if (field === "discharge") setDischargeSeries(patch)
+      else if (field === "prcp") setPrcpSeries(patch)
+      else if (field === "tmax") setTmaxSeries(patch)
+      else setTminSeries(patch)
+    },
+    []
+  )
 
   const loadLatestForStation = useCallback(
     async (station: Station, endDate?: string) => {
       setLatestLoading(true)
       setLatestError(null)
       setAutofillLabel(null)
-      setRainfallMm(null)
-      setTmaxSeries(null)
-      setTminSeries(null)
+      setWeatherMeta(null)
       setDataRangeStart(null)
       setDataRangeEnd(null)
       setSeriesAsOfDate(null)
+      setWindowDates(null)
 
       try {
         const data = await getLatestData(station.siteId, endDate)
-        setDischargeInput(data.discharge.map(String).join(", "))
-        setRainfallMm(data.rainfall_mm)
-        setTmaxSeries(data.tmax_c)
-        setTminSeries(data.tmin_c)
+        setDischargeSeries(ensure7(data.discharge, NaN))
+        setPrcpSeries(ensure7(data.rainfall_mm, 0))
+        setTmaxSeries(ensure7(data.tmax_c, 0))
+        setTminSeries(ensure7(data.tmin_c, 0))
+        setWindowDates(data.dates.slice(0, 7))
         setDataRangeStart(data.data_start)
         setDataRangeEnd(data.data_end)
         setAutofillLabel(formatAutofillLabel(data.dates))
         setSeriesAsOfDate(data.latest_date)
+        setWeatherMeta({
+          rainfallAvailable: data.rainfall_available,
+          weatherAvailable: data.weather_available,
+        })
       } catch (e) {
         setLatestError(
           e instanceof Error ? e.message : "Could not load latest data for this station"
         )
-        setDischargeInput("")
+        setDischargeSeries(nan7())
+        setPrcpSeries(nan7())
+        setTmaxSeries(nan7())
+        setTminSeries(nan7())
       } finally {
         setLatestLoading(false)
       }
@@ -96,19 +156,17 @@ export default function Dashboard() {
   }
 
   const handlePredict = async () => {
-    if (parsedValues.length < 7) return
+    const d = dischargeSeries.slice(0, 7)
+    if (d.length < 7 || !d.every(Number.isFinite)) return
 
     setIsLoading(true)
     setError(null)
 
     try {
-      const prediction = await getPrediction(selectedStation.siteId, parsedValues, {
-        recentPrcp:
-          rainfallMm && rainfallMm.length >= 7 ? rainfallMm : undefined,
-        recentTmax:
-          tmaxSeries && tmaxSeries.length >= 7 ? tmaxSeries : undefined,
-        recentTmin:
-          tminSeries && tminSeries.length >= 7 ? tminSeries : undefined,
+      const prediction = await getPrediction(selectedStation.siteId, d, {
+        recentPrcp: optionalFinite7(prcpSeries),
+        recentTmax: optionalFinite7(tmaxSeries),
+        recentTmin: optionalFinite7(tminSeries),
         asOfDate: seriesAsOfDate ?? undefined,
       })
       setResult(prediction)
@@ -127,13 +185,18 @@ export default function Dashboard() {
     <div className="min-h-screen bg-muted/30">
       <Header apiStatus={apiStatus} />
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="grid gap-6 lg:grid-cols-2">
+      <main className="w-full max-w-[min(100%,1600px)] mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-8">
           <PredictionCard
             selectedStation={selectedStation}
             onStationChange={handleStationChange}
-            dischargeInput={dischargeInput}
-            onDischargeChange={setDischargeInput}
+            windowDates={windowDates}
+            discharge={dischargeSeries}
+            prcp={prcpSeries}
+            tmax={tmaxSeries}
+            tmin={tminSeries}
+            onSeriesCellChange={handleSeriesCellChange}
+            weatherHint={weatherHint}
             onPredict={handlePredict}
             isLoading={isLoading}
             error={error}
@@ -148,13 +211,11 @@ export default function Dashboard() {
 
           <ResultPanel
             result={result}
-            dischargeValues={parsedValues}
+            dischargeValues={chartDischargeValues}
             station={selectedStation}
           />
-        </div>
 
-        <div className="mt-6">
-          <DischargeChart values={parsedValues} />
+          <DischargeChart values={chartDischargeValues} />
         </div>
       </main>
     </div>
