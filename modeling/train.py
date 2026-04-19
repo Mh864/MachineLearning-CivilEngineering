@@ -9,6 +9,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
+from modeling.calibration import fit_calibrated_classifier
 from modeling.features import FEATURE_COLUMNS
 from modeling.utils import time_based_split
 
@@ -17,6 +18,7 @@ def train_baseline_model(
     *,
     features_path: str | Path = "data/processed/features.csv",
     model_out_path: str | Path = "models/model.pkl",
+    calibrate: bool = True,
 ) -> Path:
     df = pd.read_csv(features_path, dtype={"site_id": "string"})
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
@@ -43,10 +45,18 @@ def train_baseline_model(
     )
     model.fit(X_train, y_train)
 
+    X_val = split.X_val[FEATURE_COLUMNS]
+    y_val = split.y_val.astype(int)
+    if calibrate:
+        model, cal_method = fit_calibrated_classifier(model, X_val, y_val)
+    else:
+        cal_method = "none"
+
     artifact = {
         "model": model,
         "feature_columns": FEATURE_COLUMNS,
         "model_name": "logistic_baseline",
+        "calibration": {"method": cal_method, "fit_on": "validation"},
     }
 
     model_out_path = Path(model_out_path)
@@ -59,6 +69,7 @@ def train_lightgbm_model(
     *,
     features_path: str | Path = "data/processed/features.csv",
     model_out_path: str | Path = "models/lgbm_model.pkl",
+    calibrate: bool = True,
 ) -> Path:
     try:
         from lightgbm import LGBMClassifier
@@ -88,10 +99,18 @@ def train_lightgbm_model(
     )
     model.fit(X_train, y_train)
 
+    X_val = split.X_val[FEATURE_COLUMNS]
+    y_val = split.y_val.astype(int)
+    if calibrate:
+        model, cal_method = fit_calibrated_classifier(model, X_val, y_val)
+    else:
+        cal_method = "none"
+
     artifact = {
         "model": model,
         "feature_columns": FEATURE_COLUMNS,
         "model_name": "lightgbm",
+        "calibration": {"method": cal_method, "fit_on": "validation"},
     }
 
     model_out_path = Path(model_out_path)
@@ -105,15 +124,25 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--features-path", type=str, default="data/processed/features.csv", help="Input features CSV")
     p.add_argument("--model-out", type=str, default="models/model.pkl", help="Output model artifact path")
     p.add_argument("--model-type", type=str, choices=["baseline", "lightgbm"], default="baseline")
+    p.add_argument(
+        "--no-calibration",
+        action="store_true",
+        help="Skip validation-set probability calibration (API will expose raw base estimator probabilities).",
+    )
     return p
 
 
 def main() -> int:
     args = build_arg_parser().parse_args()
+    calibrate = not args.no_calibration
     if args.model_type == "lightgbm":
-        out = train_lightgbm_model(features_path=args.features_path, model_out_path=args.model_out)
+        out = train_lightgbm_model(
+            features_path=args.features_path, model_out_path=args.model_out, calibrate=calibrate
+        )
     else:
-        out = train_baseline_model(features_path=args.features_path, model_out_path=args.model_out)
+        out = train_baseline_model(
+            features_path=args.features_path, model_out_path=args.model_out, calibrate=calibrate
+        )
     print(f"Saved model artifact: {out.as_posix()}")
     return 0
 

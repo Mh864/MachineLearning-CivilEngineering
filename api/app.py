@@ -146,12 +146,17 @@ def _startup() -> None:
 @app.get("/health")
 def health() -> dict:
     """Liveness/readiness probe and simple deployment metadata."""
-    return {
+    out: dict[str, Any] = {
         "status": "ok",
         "model_loaded": _artifact is not None,
         "artifact_path": _artifact_path,
         "uptime_seconds": round(time.time() - _API_START_TIME, 3),
     }
+    if _artifact is not None:
+        cal = _artifact.get("calibration")
+        if cal:
+            out["calibration"] = cal
+    return out
 
 
 @app.get("/latest")

@@ -6,7 +6,14 @@ from pathlib import Path
 
 import joblib
 import pandas as pd
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
+from sklearn.metrics import (
+    accuracy_score,
+    brier_score_loss,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 
 from modeling.features import FEATURE_COLUMNS
 from modeling.utils import time_based_split
@@ -19,6 +26,56 @@ def _metrics(y_true, y_pred) -> dict[str, float]:
         "recall": float(recall_score(y_true, y_pred, zero_division=0)),
         "f1": float(f1_score(y_true, y_pred, zero_division=0)),
     }
+
+
+def _brier_score_loss_binary(y_true, y_proba) -> float | None:
+    """Mean squared error of probability vs 0/1 labels; lower is better."""
+    try:
+        yt = y_true.astype(int).to_numpy()
+        return float(brier_score_loss(yt, y_proba))
+    except Exception:
+        return None
+
+
+def _per_site_test_metrics(
+    *,
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
+    model,
+    feature_cols: list[str],
+) -> dict[str, dict[str, float | int | None]]:
+    """Test metrics and optional ROC-AUC / Brier per USGS site."""
+    if "site_id" not in X_test.columns:
+        return {}
+    out: dict[str, dict[str, float | int | None]] = {}
+    has_proba = hasattr(model, "predict_proba")
+    for site_id in sorted(X_test["site_id"].astype(str).unique()):
+        mask = X_test["site_id"].astype(str) == site_id
+        Xs = X_test.loc[mask, list(feature_cols)]
+        ys = y_test.loc[mask].astype(int)
+        n = int(len(ys))
+        if n == 0:
+            continue
+        y_pred = model.predict(Xs)
+        row: dict[str, float | int | None] = {
+            "n": n,
+            **_metrics(ys, y_pred),
+        }
+        if has_proba:
+            proba = model.predict_proba(Xs)[:, 1]
+            row["brier"] = _brier_score_loss_binary(ys, proba)
+            try:
+                if ys.nunique() >= 2:
+                    row["roc_auc"] = float(roc_auc_score(ys, proba))
+                else:
+                    row["roc_auc"] = None
+            except Exception:
+                row["roc_auc"] = None
+        else:
+            row["brier"] = None
+            row["roc_auc"] = None
+        out[str(site_id)] = row
+    return out
 
 
 def evaluate_model(
@@ -87,7 +144,7 @@ def compare_models(
     best_f1_val = -1.0
     best_auc_name: str | None = None
     best_auc_val = -1.0
-    rows: list[tuple[str, float, float, float | None]] = []
+    rows: list[tuple[str, float, float, float | None, float | None]] = []
 
     for model_path in model_paths:
         artifact = joblib.load(model_path)
@@ -106,19 +163,31 @@ def compare_models(
         test_metrics = _metrics(y_test, y_test_pred)
 
         test_roc_auc: float | None = None
+        test_brier: float | None = None
         try:
             if hasattr(model, "predict_proba"):
                 y_test_proba = model.predict_proba(X_test)[:, 1]
                 test_roc_auc = float(roc_auc_score(y_test, y_test_proba))
+                test_brier = _brier_score_loss_binary(y_test, y_test_proba)
         except Exception:
             test_roc_auc = None
+            test_brier = None
+
+        per_site_test = _per_site_test_metrics(
+            X_test=split.X_test.loc[X_test.index],
+            y_test=y_test,
+            model=model,
+            feature_cols=list(feature_cols),
+        )
 
         results[model_name] = {
             "validation": val_metrics,
             "test": test_metrics,
             "test_roc_auc": test_roc_auc,
+            "test_brier": test_brier,
+            "per_site_test": per_site_test,
         }
-        rows.append((model_name, val_metrics["f1"], test_metrics["f1"], test_roc_auc))
+        rows.append((model_name, val_metrics["f1"], test_metrics["f1"], test_roc_auc, test_brier))
 
         if test_metrics["f1"] > best_f1_val:
             best_f1_val = test_metrics["f1"]
@@ -136,11 +205,12 @@ def compare_models(
         "n_test": int(len(split.X_test)),
     }
 
-    print(f"{'Model':<20} {'Val F1':>10} {'Test F1':>10} {'Test ROC-AUC':>14}")
-    print("-" * 58)
-    for model_name, val_f1, test_f1, test_auc in rows:
+    print(f"{'Model':<20} {'Val F1':>10} {'Test F1':>10} {'Test ROC-AUC':>14} {'Test Brier':>12}")
+    print("-" * 72)
+    for model_name, val_f1, test_f1, test_auc, test_br in rows:
         auc_txt = f"{test_auc:.4f}" if test_auc is not None else "n/a"
-        print(f"{model_name:<20} {val_f1:>10.4f} {test_f1:>10.4f} {auc_txt:>14}")
+        br_txt = f"{test_br:.4f}" if test_br is not None else "n/a"
+        print(f"{model_name:<20} {val_f1:>10.4f} {test_f1:>10.4f} {auc_txt:>14} {br_txt:>12}")
 
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)

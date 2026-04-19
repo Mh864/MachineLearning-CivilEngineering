@@ -14,6 +14,7 @@ from typing import Any
 import joblib
 import numpy as np
 
+from modeling.calibration import unwrap_calibrated_estimator
 from modeling.features import FEATURE_COLUMNS
 
 
@@ -55,7 +56,7 @@ def export_interpretability(
     if logistic_path and Path(logistic_path).is_file():
         art = joblib.load(logistic_path)
         cols = list(art.get("feature_columns", FEATURE_COLUMNS))
-        rows = _logistic_coefficients(art["model"], cols)
+        rows = _logistic_coefficients(unwrap_calibrated_estimator(art["model"]), cols)
         path = out_dir / "logistic_coefficients.json"
         payload = {
             "model_path": str(logistic_path),
@@ -68,7 +69,7 @@ def export_interpretability(
     if lgbm_path and Path(lgbm_path).is_file():
         art = joblib.load(lgbm_path)
         cols = list(art.get("feature_columns", FEATURE_COLUMNS))
-        rows = _lgbm_importance(art["model"], cols)
+        rows = _lgbm_importance(unwrap_calibrated_estimator(art["model"]), cols)
         path = out_dir / "lgbm_feature_importance.json"
         payload = {
             "model_path": str(lgbm_path),

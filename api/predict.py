@@ -158,5 +158,6 @@ def predict_from_recent_discharge(
     )
     X = X[feature_cols]
     pred = int(model.predict(X)[0])
+    # When the artifact is CalibratedClassifierCV, this is validation-calibrated P(class 1).
     proba = float(model.predict_proba(X)[0][1])
     return pred, proba

@@ -32,6 +32,11 @@ def main() -> int:
     p.add_argument("--start-date", type=str, default="2018-01-01")
     p.add_argument("--end-date", type=str, default="2024-12-31")
     p.add_argument("--model-type", choices=["baseline", "lightgbm", "both"], default="both")
+    p.add_argument(
+        "--no-calibration",
+        action="store_true",
+        help="Pass through to modeling.train: skip validation-set probability calibration.",
+    )
     args = p.parse_args()
 
     if not args.skip_fetch:
@@ -71,12 +76,15 @@ def main() -> int:
     model_paths: list[str] = []
 
     if args.model_type in ("baseline", "both"):
-        run([
+        train_baseline = [
             "-m", "modeling.train",
             "--features-path", "data/processed/features.csv",
             "--model-out", "models/model.pkl",
             "--model-type", "baseline",
-        ], "Step 4a: Train baseline model (Logistic Regression)")
+        ]
+        if args.no_calibration:
+            train_baseline.append("--no-calibration")
+        run(train_baseline, "Step 4a: Train baseline model (Logistic Regression)")
         model_paths.append("models/model.pkl")
 
         run([
@@ -87,12 +95,15 @@ def main() -> int:
         ], "Step 5a: Evaluate baseline model")
 
     if args.model_type in ("lightgbm", "both"):
-        run([
+        train_lgbm = [
             "-m", "modeling.train",
             "--features-path", "data/processed/features.csv",
             "--model-out", "models/lgbm_model.pkl",
             "--model-type", "lightgbm",
-        ], "Step 4b: Train LightGBM model")
+        ]
+        if args.no_calibration:
+            train_lgbm.append("--no-calibration")
+        run(train_lgbm, "Step 4b: Train LightGBM model")
         model_paths.append("models/lgbm_model.pkl")
 
         run([

@@ -162,12 +162,16 @@ def load_noaa_weather(noaa_dir: str | Path) -> tuple[pd.DataFrame, set[str]]:
     return merged, available_inputs
 
 
-def _add_features_per_site(
+def merge_weather_into_site_discharge(
     sdf: pd.DataFrame,
     precip_df: pd.DataFrame | None = None,
-    *,
-    heavy_rain_threshold: float = 20.0,
 ) -> pd.DataFrame:
+    """
+    Left-join NOAA daily columns onto a single-site USGS frame and apply the same post-merge
+    numeric fills as `_add_features_per_site` (before lag/rolling features).
+
+    Exposed for tests that must extract 7-day windows for API parity checks.
+    """
     sdf = sdf.sort_values("date").copy()
     weather_cols = ["prcp", "tmax", "tmin", "awnd", "snow", "snwd"]
 
@@ -186,6 +190,23 @@ def _add_features_per_site(
         for c in weather_cols:
             sdf[c] = pd.NA
 
+    sdf["prcp"] = pd.to_numeric(sdf["prcp"], errors="coerce").fillna(0.0)
+    sdf["tmax"] = pd.to_numeric(sdf["tmax"], errors="coerce").fillna(0.0)
+    sdf["tmin"] = pd.to_numeric(sdf["tmin"], errors="coerce").fillna(0.0)
+    sdf["awnd"] = pd.to_numeric(sdf["awnd"], errors="coerce").fillna(0.0)
+    sdf["snow"] = pd.to_numeric(sdf["snow"], errors="coerce").fillna(0.0)
+    sdf["snow_depth"] = pd.to_numeric(sdf["snwd"], errors="coerce").fillna(0.0)
+    return sdf
+
+
+def _add_features_per_site(
+    sdf: pd.DataFrame,
+    precip_df: pd.DataFrame | None = None,
+    *,
+    heavy_rain_threshold: float = 20.0,
+) -> pd.DataFrame:
+    sdf = merge_weather_into_site_discharge(sdf, precip_df)
+
     sdf["discharge_lag1"] = sdf["discharge"].shift(1)
     sdf["discharge_lag2"] = sdf["discharge"].shift(2)
     sdf["discharge_lag3"] = sdf["discharge"].shift(3)
@@ -195,13 +216,6 @@ def _add_features_per_site(
 
     sdf["discharge_diff_1"] = sdf["discharge"] - sdf["discharge_lag1"]
     sdf["month"] = sdf["date"].dt.month.astype(int)
-
-    sdf["prcp"] = pd.to_numeric(sdf["prcp"], errors="coerce").fillna(0.0)
-    sdf["tmax"] = pd.to_numeric(sdf["tmax"], errors="coerce").fillna(0.0)
-    sdf["tmin"] = pd.to_numeric(sdf["tmin"], errors="coerce").fillna(0.0)
-    sdf["awnd"] = pd.to_numeric(sdf["awnd"], errors="coerce").fillna(0.0)
-    sdf["snow"] = pd.to_numeric(sdf["snow"], errors="coerce").fillna(0.0)
-    sdf["snow_depth"] = pd.to_numeric(sdf["snwd"], errors="coerce").fillna(0.0)
 
     sdf["prcp_lag1"] = sdf["prcp"].shift(1)
     sdf["prcp_lag2"] = sdf["prcp"].shift(2)
