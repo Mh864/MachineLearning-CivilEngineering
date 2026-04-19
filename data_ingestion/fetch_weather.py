@@ -22,7 +22,7 @@ SITE_TO_NOAA = {
     "06710247": "CherryCreek_CO",
     "08066500": "Trinity_TX",
     "09380000": "Colorado_AZ",
-    "11447650": "Sacramento_CA",
+    "11425500": "Sacramento_CA",
     "12301933": "ClarkFork_MT",
     "14211720": "Willamette_OR",
 }
@@ -36,7 +36,7 @@ SITE_TO_STATION = {
     "06710247": "GHCND:USW00023062",  # Denver, CO
     "08066500": "GHCND:USW00012960",  # Houston/IAH, TX
     "09380000": "GHCND:USW00023195",  # Page, AZ
-    "11447650": "GHCND:USW00023232",  # Sacramento, CA
+    "11425500": "GHCND:USW00023232",  # Sacramento, CA (regional GHCND; aligns with sites.json)
     "12301933": "GHCND:USW00024153",  # Missoula, MT
     "14211720": "GHCND:USW00024229",  # Portland, OR
 }

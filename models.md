@@ -1,191 +1,122 @@
 # Models Guide
 
-This file explains all models in the project, how they are trained, where they are used, and whether they are supervised or unsupervised.
+Supervised **binary classifiers** for **next-day** high-flow exceedance (per-site discharge threshold). **No random split:** training uses a **chronological** cut on the stacked multi-site table (`modeling/utils.py::time_based_split`, default `0.70 / 0.15 / 0.15`).
 
-## Quick classification
+## 1) Official logistic baseline (Pipeline)
 
-- `LogisticRegression` baseline model: **supervised learning** (binary classification)
-- `LightGBM (LGBMClassifier)` model: **supervised learning** (binary classification)
-- Unsupervised models: **none currently implemented**
+### Where
 
-The prediction task is: classify whether next-day (or lead-day) discharge exceeds a site-specific high-flow threshold.
-
-## 1) Baseline model (Logistic Regression)
-
-### Where it is defined
-
-- Training: `modeling/train.py` in `train_baseline_model`
-- Default output artifact: `models/model.pkl`
+- Training: `modeling/train.py` → `train_baseline_model`
+- Artifact: `models/model.pkl` (default)
 
 ### How it is trained
 
-1. Load features from `data/processed/features.csv`
-2. Parse `date` and `target`
-3. Keep modeling columns: `["site_id", "date"] + FEATURE_COLUMNS + ["target"]`
-4. Drop rows with missing values
-5. Split data using `time_based_split` (`train=0.70`, `val=0.15`, `test=0.15`)
-6. Fit:
-   - `LogisticRegression(max_iter=2000, class_weight="balanced")`
+1. Load `data/processed/features.csv` with the same columns as `FEATURE_COLUMNS` + `site_id`, `date`, `target`.
+2. Drop rows with missing features or target.
+3. `time_based_split(..., train_frac=0.70, val_frac=0.15)`.
+4. Fit:
 
-### Artifact format
-
-Saved with joblib as:
-
-```python
-{
-  "model": fitted_model,
-  "feature_columns": FEATURE_COLUMNS
-}
+```text
+Pipeline([
+  ("scaler", StandardScaler()),
+  ("clf", LogisticRegression(max_iter=5000, class_weight="balanced")),
+])
 ```
 
-### Where it is used
+Standardization is **required** so the linear model converges stably with mixed-scale inputs.
 
-- Evaluation: `modeling/evaluate.py` (`evaluate_model`, `compare_models`)
-- API inference: `api/predict.py` via artifact loading and `model.predict(...)`
-- Optional lead-time testing: `modeling/lead_time.py` if this artifact is passed
-
-## 2) Advanced model (LightGBM classifier)
-
-### Where it is defined
-
-- Training: `modeling/train.py` in `train_lightgbm_model`
-- Default output artifact: `models/lgbm_model.pkl`
-
-### How it is trained
-
-Data preparation is intentionally the same as baseline:
-
-1. Load `data/processed/features.csv`
-2. Parse `date` and `target`
-3. Keep same modeling columns and drop missing rows
-4. Use the same `time_based_split` (`0.70/0.15/0.15`)
-
-Model config:
-
-- `n_estimators=300`
-- `learning_rate=0.05`
-- `num_leaves=31`
-- `class_weight="balanced"`
-- `random_state=42`
-- `n_jobs=-1`
-
-### Artifact format
-
-Saved with joblib as:
+### Artifact
 
 ```python
 {
-  "model": fitted_model,
+  "model": fitted_pipeline,  # predict / predict_proba delegate to the Pipeline
   "feature_columns": FEATURE_COLUMNS,
-  "model_name": "lightgbm"
+  "model_name": "logistic_baseline",
 }
 ```
 
-### Where it is used
+### Interpretability
 
-- Single-model evaluation: `modeling/evaluate.py` (`evaluate_model`)
-- Multi-model comparison: `modeling/evaluate.py` (`compare_models`)
-- Lead-time analysis: `modeling/lead_time.py` (default model path points to LightGBM)
-- Can be used by API inference if selected model artifact is loaded
+```bash
+python -m modeling.interpretability --out-dir results
+```
 
-## 3) Evaluation models vs analysis scripts
+Writes `results/logistic_coefficients.json`: standardized coefficients sorted by absolute value (from the `clf` step).
 
-### `modeling/evaluate.py`
+## 2) LightGBM (`LGBMClassifier`)
 
-Not a model itself. It evaluates trained supervised classifiers.
+### Where
 
-- `evaluate_model`: computes `accuracy`, `precision`, `recall`, `f1`
-- `compare_models`: compares multiple trained artifacts and also tries `test_roc_auc` if `predict_proba` is available
+- Training: `modeling/train.py` → `train_lightgbm_model`
+- Artifact: `models/lgbm_model.pkl`
 
-### `modeling/lead_time.py`
+### Config (fixed, reproducible)
 
-Also not a model itself. It redefines the target for different forecast horizons (`1,2,3,5,7` days ahead), then evaluates a trained classifier on each horizon.
+- `n_estimators=300`, `learning_rate=0.05`, `num_leaves=31`, `class_weight="balanced"`, `random_state=42`, `n_jobs=-1`
 
-## 4) Supervised vs unsupervised in this project
+### Interpretability
 
-### Supervised (implemented)
+Same command as above produces `results/lgbm_feature_importance.json` (`feature_importances_`).
 
-Both implemented models are supervised because:
+## 3) Naive baselines (same split as production models)
 
-- training data includes explicit labels (`target`)
-- models learn mapping from features to known classes (`0`/`1`)
-- performance is measured against labeled validation/test targets
+Not learned models; used to calibrate how much value ML adds.
 
-### Unsupervised (not implemented)
+```bash
+python -m modeling.evaluate --naive-baselines --out-path results/naive_baselines.json
+```
 
-No clustering, anomaly detection, PCA, autoencoders, or self-supervised modules are currently part of the training pipeline.
+- **Persistence:** `ŷ(t) = y(t−1)` within each USGS site (previous row after `date`, `site_id` ordering used by `time_based_split`).
+- **Majority:** always predict the **training-slice** majority class.
 
-## 5) Training entry points (CLI)
+## 4) Evaluation and comparison
 
-- Baseline:
-  - `python -m modeling.train --features-path data/processed/features.csv --model-out models/model.pkl --model-type baseline`
-- LightGBM:
-  - `python -m modeling.train --features-path data/processed/features.csv --model-out models/lgbm_model.pkl --model-type lightgbm`
+- Single model: `python -m modeling.evaluate --model-path models/model.pkl --out-path results/metrics.json`
+- Compare: `python -m modeling.evaluate --compare --model-paths models/model.pkl models/lgbm_model.pkl --out-path results/comparison.json`
 
-## 6) Model usage across project lifecycle
+`compare_models` evaluates on the **same** `(X_val, X_test)` rows for every artifact (complete feature rows only).
 
-1. Build features (`modeling/features.py`)
-2. Train model (`modeling/train.py`)
-3. Evaluate model (`modeling/evaluate.py`)
-4. Compare models (`modeling/evaluate.py --compare`)
-5. Stress-test forecast horizon (`modeling/lead_time.py`)
-6. Serve predictions (`api/predict.py` through `api/app.py`)
+## 5) Forward-window stability (test period)
 
-## 7) Metrics explained
+Splits the **chronological test** set into contiguous time windows (default **4**) and reports metrics per window **without retraining** (same trained model).
 
-The project currently reports these metrics in `results/metrics_*.json` and `results/comparison.json`.
+```bash
+python -m modeling.backtest --model-path models/lgbm_model.pkl --out-path results/forward_window_stability.json
+```
 
-### Accuracy
+Use this to see whether performance is stable over the test years or concentrated in one sub-period.
 
-- Meaning: fraction of all predictions that are correct.
-- Formula: `(TP + TN) / (TP + TN + FP + FN)`
-- Interpretation here: useful as a broad signal, but can be misleading when flood events (positive class) are rarer than non-events.
+## 6) Lead-time analysis
 
-### Precision
+Redefines the target as exceedance **k** days ahead (`k ∈ {1,2,3,5,7}`), rebuilds features from `clean_data.csv` + NOAA, and evaluates the **same frozen** classifier on each horizon. See `modeling/lead_time.py`.
 
-- Meaning: among predicted positives, how many were actually positive.
-- Formula: `TP / (TP + FP)`
-- Interpretation here: higher precision means fewer false flood alarms.
+## 7) Example metrics (official multi-site run)
 
-### Recall
+After retraining on the full multi-site `features.csv`, a representative snapshot is:
 
-- Meaning: among actual positives, how many were detected.
-- Formula: `TP / (TP + FN)`
-- Interpretation here: higher recall means fewer missed flood-risk events.
+**Logistic Regression (Pipeline)**
 
-### F1 score
+| Split | Accuracy | Precision | Recall | F1 |
+|--------|------------|------------|--------|-----|
+| Validation | 0.982 | 0.375 | 0.600 | **0.462** |
+| Test | 0.963 | 0.730 | 0.871 | **0.794** |
 
-- Meaning: harmonic mean of precision and recall.
-- Formula: `2 * (precision * recall) / (precision + recall)`
-- Interpretation here: best single metric when you care about balancing missed events and false alarms.
+**LightGBM**
 
-### ROC-AUC (comparison mode)
+| Split | Test F1 | Test ROC-AUC |
+|--------|---------|----------------|
+| (typical) | **~0.772** | **~0.984** |
 
-- Meaning: ranking quality across thresholds using predicted probabilities.
-- Range: `0.5` (random) to `1.0` (perfect).
-- Interpretation here: useful for threshold tuning and model comparison beyond a fixed cutoff.
+On this snapshot the **baseline slightly exceeds LightGBM on test F1**; LightGBM is often stronger on **ROC-AUC**. **Always** use the numbers in your current `results/comparison.json` after training.
 
-### Why F1 and recall matter most for this task
+## 8) Metrics definitions
 
-For flood-risk prediction, missing an event can be costly, so recall is critical.  
-At the same time, excessive false alarms reduce trust, so precision also matters.  
-F1 is a practical balance between both.
+- **Accuracy:** fraction of correct labels (can be high when negatives dominate).
+- **Precision / recall / F1:** standard binary definitions (`f1` uses `zero_division=0`).
+- **ROC-AUC:** ranking quality from `predict_proba` on the test set (when available).
 
-### Current run snapshot (latest retraining)
+## 9) Where models are used
 
-- Baseline (`LogisticRegression`):
-  - Validation: `accuracy=0.9634`, `precision=0.2353`, `recall=0.8000`, `f1=0.3636`
-  - Test: `accuracy=0.9321`, `precision=0.5510`, `recall=0.8710`, `f1=0.6750`, `roc_auc=0.9783`
-- LightGBM (`LGBMClassifier`):
-  - Validation: `accuracy=0.9948`, `precision=1.0000`, `recall=0.6000`, `f1=0.7500`
-  - Test: `accuracy=0.9661`, `precision=0.8462`, `recall=0.7097`, `f1=0.7719`, `roc_auc=0.9843`
-
-### Practical interpretation of the current results
-
-- LightGBM is better overall on test set (`f1` and `roc_auc` higher).
-- Baseline has higher recall on test (captures more positives) but much lower precision (more false alarms).
-- LightGBM is a stronger default deployment candidate, while baseline can remain a high-recall benchmark.
-
-## 8) Current practical note
-
-The training feature set now includes NOAA weather-derived features and interaction terms. The API inference path has been updated to accept optional weather inputs (`recent_prcp`, `tmax`, `tmin`, `awnd`, `snow`, `snow_depth`) and remains backward-compatible by defaulting missing weather values.
+- `modeling/evaluate.py` — validation/test metrics
+- `api/predict.py` + `api/app.py` — online inference (`GET /predict`)
+- API prefers `models/lgbm_model.pkl` if present, otherwise `models/model.pkl`

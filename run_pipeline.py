@@ -29,8 +29,8 @@ def run(cmd: list[str], step: str) -> None:
 def main() -> int:
     p = argparse.ArgumentParser(description="Run the full flood risk ML pipeline.")
     p.add_argument("--skip-fetch", action="store_true", help="Skip USGS data download (use existing raw data)")
-    p.add_argument("--start-date", type=str, default="2015-01-01")
-    p.add_argument("--end-date", type=str, default="2023-12-31")
+    p.add_argument("--start-date", type=str, default="2018-01-01")
+    p.add_argument("--end-date", type=str, default="2024-12-31")
     p.add_argument("--model-type", choices=["baseline", "lightgbm", "both"], default="both")
     args = p.parse_args()
 
@@ -45,6 +45,15 @@ def main() -> int:
         ], "Step 1: Fetch USGS data for all 10 sites")
     else:
         print("\n[Skipping USGS fetch — using existing raw data]")
+
+    run([
+        "-m", "data_ingestion.verify_noaa_coverage",
+        "--noaa-dir", "data/raw/noaa",
+        "--expected-start", args.start_date,
+        "--expected-end", args.end_date,
+        "--out-json", "results/noaa_coverage.json",
+        "--warn-only",
+    ], "Step 1b: Verify NOAA rainfall CSV coverage (informational)")
 
     run([
         "-m", "data_processing.clean_data",
@@ -102,6 +111,27 @@ def main() -> int:
             "--out-path", "results/comparison.json",
         ], "Step 6: Compare models side by side")
 
+    run([
+        "-m", "modeling.evaluate",
+        "--naive-baselines",
+        "--features-path", "data/processed/features.csv",
+        "--out-path", "results/naive_baselines.json",
+    ], "Step 6b: Naive baselines (persistence + majority class)")
+
+    if model_paths:
+        run([
+            "-m", "modeling.interpretability",
+            "--out-dir", "results",
+        ], "Step 6c: Export logistic coefficients + LightGBM feature importance")
+
+    if "models/lgbm_model.pkl" in model_paths:
+        run([
+            "-m", "modeling.backtest",
+            "--features-path", "data/processed/features.csv",
+            "--model-path", "models/lgbm_model.pkl",
+            "--out-path", "results/forward_window_stability.json",
+        ], "Step 6d: Forward-window test stability (LightGBM)")
+
     if "models/lgbm_model.pkl" in model_paths:
         run([
             "-m", "modeling.lead_time",
@@ -126,6 +156,11 @@ def main() -> int:
     print("  results/metrics_lgbm.json      — LightGBM metrics")
     print("  results/comparison.json        — Side-by-side comparison")
     print("  results/lead_time_analysis.json — Accuracy at 1-7 day horizons")
+    print("  results/noaa_coverage.json        — NOAA file/date coverage audit")
+    print("  results/naive_baselines.json      — Persistence + majority baselines")
+    print("  results/logistic_coefficients.json  — Standardized LR coefficients")
+    print("  results/lgbm_feature_importance.json — LightGBM gain importances")
+    print("  results/forward_window_stability.json — Test-period window metrics (LGBM)")
     return 0
 
 

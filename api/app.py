@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
@@ -21,6 +22,8 @@ app.add_middleware(
 )
 
 _artifact = None
+_artifact_path: str | None = None
+_API_START_TIME = time.time()
 
 USGS_RAW_DIR = Path("data/raw/usgs")
 NOAA_DIR = Path("data/raw/noaa")
@@ -93,10 +96,11 @@ SITE_TO_NOAA = {
 }
 
 
-def _load_artifact():
+def _load_artifact_pair() -> tuple[Any, str]:
+    """Prefer LightGBM artifact if present, else logistic Pipeline artifact."""
     for path in ["models/lgbm_model.pkl", "models/model.pkl"]:
         if Path(path).exists():
-            return load_model_artifact(path)
+            return load_model_artifact(path), path
     raise FileNotFoundError("No model file found in models/")
 
 
@@ -135,8 +139,19 @@ def _normalize_usgs_site_column(series: pd.Series) -> pd.Series:
 
 @app.on_event("startup")
 def _startup() -> None:
-    global _artifact
-    _artifact = _load_artifact()
+    global _artifact, _artifact_path
+    _artifact, _artifact_path = _load_artifact_pair()
+
+
+@app.get("/health")
+def health() -> dict:
+    """Liveness/readiness probe and simple deployment metadata."""
+    return {
+        "status": "ok",
+        "model_loaded": _artifact is not None,
+        "artifact_path": _artifact_path,
+        "uptime_seconds": round(time.time() - _API_START_TIME, 3),
+    }
 
 
 @app.get("/latest")
@@ -275,9 +290,9 @@ def predict(
     snow_depth: Optional[str] = Query(None, description="Reserved: optional comma-separated snow depth series."),
     heavy_rain_threshold: Optional[float] = Query(None, description="Reserved: heavy rain threshold (mm)."),
 ):
-    global _artifact
+    global _artifact, _artifact_path
     if _artifact is None:
-        _artifact = _load_artifact()
+        _artifact, _artifact_path = _load_artifact_pair()
 
     recent = [float(x.strip()) for x in recent_discharge.split(",") if x.strip() != ""]
     if len(recent) < 7:

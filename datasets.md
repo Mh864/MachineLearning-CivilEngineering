@@ -201,7 +201,7 @@ Notes:
 - `06710247 -> CherryCreek_CO`
 - `08066500 -> Trinity_TX`
 - `09380000 -> Colorado_AZ`
-- `11447650 -> Sacramento_CA`
+- `11425500 -> Sacramento_CA` (must match `data_ingestion/sites.json`)
 - `12301933 -> ClarkFork_MT`
 - `14211720 -> Willamette_OR`
 
@@ -211,16 +211,39 @@ Example (PowerShell):
 
 ```bash
 $env:NOAA_CDO_TOKEN="your_token_here"
-python -m data_ingestion.fetch_weather --sites-config data_ingestion/sites.json --start-date 2015-01-01 --end-date 2023-12-31 --out-dir data/raw/noaa
+python -m data_ingestion.fetch_weather --sites-config data_ingestion/sites.json --start-date 2018-01-01 --end-date 2024-12-31 --out-dir data/raw/noaa
 ```
 
 or pass token directly:
 
 ```bash
-python -m data_ingestion.fetch_weather --sites-config data_ingestion/sites.json --start-date 2015-01-01 --end-date 2023-12-31 --out-dir data/raw/noaa --token your_token_here
+python -m data_ingestion.fetch_weather --sites-config data_ingestion/sites.json --start-date 2018-01-01 --end-date 2024-12-31 --out-dir data/raw/noaa --token your_token_here
 ```
 
 Note: NOAA CDO rejects date spans >= 1 year in one request; the script automatically paginates by sub-year windows and merges results.
+
+### Coverage verification (offline)
+
+After files are on disk, audit filenames, row counts, and calendar span vs the study window:
+
+```bash
+python -m data_ingestion.verify_noaa_coverage --noaa-dir data/raw/noaa --expected-start 2018-01-01 --expected-end 2024-12-31 --out-json results/noaa_coverage.json
+```
+
+- Expect **one** `rainfall_<LocationName>.csv` per entry in `SITE_TO_NOAA` (see `data_ingestion/fetch_weather.py`), aligned with `sites.json` USGS `site_id` values.
+- The report flags **missing files**, **incomplete date ranges** (min/max outside the expected window), and **internal single-day gaps** (count of adjacent-date jumps > 1 day) for each file.
+- Use `--warn-only` to always exit with status 0 (useful when the report is informational only).
+
+### Site → NOAA station mapping
+
+- **Location slug** (`Potomac_DC`, …) selects the output filename `rainfall_<slug>.csv` and ties into `modeling/features.py` via the reverse map.
+- **GHCND station id** (e.g. `GHCND:USW00013743`) is taken from `SITE_TO_STATION` unless overridden per site with `"noaa_station_id"` in `sites.json`.
+- Sacramento River is keyed to USGS **`11425500`** everywhere (`sites.json`, `fetch_weather`, `modeling/features.py`, `api/app.py`) so gauge data and `rainfall_Sacramento_CA.csv` refer to the same site.
+
+### Merge with discharge (see also `features.md`)
+
+- Weather rows are merged to each gauge’s daily discharge on **`date`** (`left` join from USGS timeline).
+- Missing PRCP/TMAX/TMIN after the join are filled with **`0.0`** for numeric weather fields in `modeling/features._add_features_per_site`, so models always receive a full feature vector; this is a **neutral default**, not imputation from neighbors.
 
 ### Station mapping behavior
 

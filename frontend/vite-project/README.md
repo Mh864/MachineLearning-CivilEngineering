@@ -1,16 +1,19 @@
-# React + Vite
+# Legacy Vite + React scaffold
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This folder is an older **Vite + React** client for manual API checks.
 
-Currently, two official plugins are available:
+The **current** dashboard for this repository lives in **`frontend1/`** (Next.js App Router, flood UI, `@/lib/api` client). Prefer that app for development unless you are maintaining this scaffold.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Quick start
 
-## React Compiler
+```bash
+cd frontend/vite-project
+npm install
+npm run dev
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Point the UI at the FastAPI backend (default `http://127.0.0.1:8000`). If the project exposes `VITE_API_URL`, set it to your API base URL.
 
-## Expanding the ESLint configuration
+## Templates
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+This template ships with Vite’s default React setup (see upstream Vite docs for React Compiler, ESLint expansion, etc.).
