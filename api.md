@@ -40,7 +40,7 @@ Lightweight **liveness/readiness** response for monitoring:
 
 ## `GET /latest`
 
-Returns the last 7 daily discharge values (and aligned NOAA fields when files exist) for autofill in the UI. See `api/app.py` for query parameters (`site_id`, optional `end_date`).
+Returns the last 7 daily discharge values (and aligned NOAA fields when `data/raw/noaa/rainfall_<Location>.csv` exists) for autofill in the UI. Response includes `rainfall_mm`, `tmax_c`, `tmin_c`, and when those files contain the columns, `awnd` (m/s), `snow` (mm), and `snow_depth` (mm, from SNWD). See `api/app.py` for query parameters (`site_id`, optional `end_date`).
 
 ## `GET /predict`
 

@@ -1,0 +1,102 @@
+{
+  "model_path": "models/lgbm_model.pkl",
+  "model_name": "lightgbm",
+  "feature_importance_sorted": [
+    {
+      "feature": "discharge_diff_1",
+      "importance": 1017.0
+    },
+    {
+      "feature": "discharge_lag1",
+      "importance": 717.0
+    },
+    {
+      "feature": "discharge_roll_mean_3",
+      "importance": 662.0
+    },
+    {
+      "feature": "discharge_roll_mean_7",
+      "importance": 649.0
+    },
+    {
+      "feature": "awnd",
+      "importance": 615.0
+    },
+    {
+      "feature": "month",
+      "importance": 567.0
+    },
+    {
+      "feature": "prcp_roll_sum_7",
+      "importance": 557.0
+    },
+    {
+      "feature": "discharge_lag3",
+      "importance": 544.0
+    },
+    {
+      "feature": "discharge_lag2",
+      "importance": 444.0
+    },
+    {
+      "feature": "temp_range",
+      "importance": 416.0
+    },
+    {
+      "feature": "tmin",
+      "importance": 408.0
+    },
+    {
+      "feature": "tavg",
+      "importance": 386.0
+    },
+    {
+      "feature": "tmax",
+      "importance": 328.0
+    },
+    {
+      "feature": "prcp_x_discharge_lag1",
+      "importance": 313.0
+    },
+    {
+      "feature": "prcp_roll_sum_3_x_discharge_roll_mean_3",
+      "importance": 297.0
+    },
+    {
+      "feature": "prcp_roll_sum_3",
+      "importance": 215.0
+    },
+    {
+      "feature": "prcp_lag2",
+      "importance": 212.0
+    },
+    {
+      "feature": "prcp_lag3",
+      "importance": 207.0
+    },
+    {
+      "feature": "prcp_lag1",
+      "importance": 200.0
+    },
+    {
+      "feature": "prcp_roll_mean_7",
+      "importance": 94.0
+    },
+    {
+      "feature": "snow_depth",
+      "importance": 74.0
+    },
+    {
+      "feature": "snow",
+      "importance": 30.0
+    },
+    {
+      "feature": "prcp_roll_mean_3",
+      "importance": 28.0
+    },
+    {
+      "feature": "heavy_rain_flag_1d",
+      "importance": 20.0
+    }
+  ]
+}

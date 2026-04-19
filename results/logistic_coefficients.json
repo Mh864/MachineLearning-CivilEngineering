@@ -1,0 +1,102 @@
+{
+  "model_path": "models/model.pkl",
+  "model_name": "logistic_baseline",
+  "coefficients_sorted_by_abs": [
+    {
+      "feature": "discharge_lag1",
+      "coefficient": 0.907518307674573
+    },
+    {
+      "feature": "discharge_roll_mean_7",
+      "coefficient": -0.8466204398328249
+    },
+    {
+      "feature": "discharge_roll_mean_3",
+      "coefficient": 0.7988848864688451
+    },
+    {
+      "feature": "discharge_diff_1",
+      "coefficient": 0.5867294425516081
+    },
+    {
+      "feature": "discharge_lag2",
+      "coefficient": 0.4205478608134575
+    },
+    {
+      "feature": "prcp_lag2",
+      "coefficient": -0.3916383872430359
+    },
+    {
+      "feature": "prcp_roll_sum_3",
+      "coefficient": 0.32255139156235774
+    },
+    {
+      "feature": "prcp_roll_mean_3",
+      "coefficient": 0.32255139156235757
+    },
+    {
+      "feature": "prcp_lag1",
+      "coefficient": -0.32062769990236706
+    },
+    {
+      "feature": "snow_depth",
+      "coefficient": -0.24728971165534688
+    },
+    {
+      "feature": "discharge_lag3",
+      "coefficient": -0.2019784882115572
+    },
+    {
+      "feature": "tmin",
+      "coefficient": -0.199034705621931
+    },
+    {
+      "feature": "prcp_roll_sum_7",
+      "coefficient": 0.19195128363891742
+    },
+    {
+      "feature": "prcp_roll_mean_7",
+      "coefficient": 0.19195128363891445
+    },
+    {
+      "feature": "temp_range",
+      "coefficient": 0.14681179105191236
+    },
+    {
+      "feature": "tavg",
+      "coefficient": -0.14288390914058202
+    },
+    {
+      "feature": "heavy_rain_flag_1d",
+      "coefficient": -0.12004463362684743
+    },
+    {
+      "feature": "tmax",
+      "coefficient": -0.08982566610545628
+    },
+    {
+      "feature": "month",
+      "coefficient": -0.08709340053090552
+    },
+    {
+      "feature": "awnd",
+      "coefficient": 0.06667694098229215
+    },
+    {
+      "feature": "prcp_roll_sum_3_x_discharge_roll_mean_3",
+      "coefficient": -0.057585580263707886
+    },
+    {
+      "feature": "prcp_lag3",
+      "coefficient": -0.04894681506279323
+    },
+    {
+      "feature": "prcp_x_discharge_lag1",
+      "coefficient": -0.027189910792168107
+    },
+    {
+      "feature": "snow",
+      "coefficient": -0.012678131821173876
+    }
+  ]
+}

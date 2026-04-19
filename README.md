@@ -10,7 +10,7 @@ End-to-end flood-risk project for civil engineering workflows: **binary classifi
 - Builds lag/rolling features and a binary next-day target (`features.csv`).
 - Trains `LogisticRegression` inside a `StandardScaler` **Pipeline** (balanced class weights) and `LGBMClassifier` on the **same** feature rows and split.
 - Evaluates with held-out metrics, **naive baselines** (persistence + majority), **interpretability** exports, **forward-window** test stability, and **lead-time** analysis.
-- Serves predictions with FastAPI; optional Next.js dashboard under `frontend1/`.
+- Serves predictions with FastAPI; optional Next.js dashboard under `frontend/`.
 
 ## Repository structure
 
@@ -58,7 +58,7 @@ results/
   forward_window_stability.json
   lead_time_analysis.json
 
-frontend1/               Next.js app (dashboard)
+frontend/               Next.js app (dashboard)
 
 run_api.py               Run API with repo root on sys.path
 run_pipeline.py          End-to-end ML steps
@@ -145,12 +145,12 @@ python run_api.py
 
 On this snapshot the logistic baseline **slightly outperforms LightGBM on test F1**; LightGBM often leads on **ROC-AUC** (~0.98). Always trust a fresh `results/comparison.json` after retraining.
 
-## Frontend (`frontend1/`)
+## Frontend (`frontend/`)
 
 Next.js App Router UI for the dashboard. From repo root:
 
 ```bash
-cd frontend1
+cd frontend
 npm install
 npm run dev
 ```

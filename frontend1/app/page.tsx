@@ -48,6 +48,9 @@ export default function Dashboard() {
   const [prcpSeries, setPrcpSeries] = useState<number[]>(nan7)
   const [tmaxSeries, setTmaxSeries] = useState<number[]>(nan7)
   const [tminSeries, setTminSeries] = useState<number[]>(nan7)
+  const [awndSeries, setAwndSeries] = useState<number[]>(nan7)
+  const [snowSeries, setSnowSeries] = useState<number[]>(nan7)
+  const [snowDepthSeries, setSnowDepthSeries] = useState<number[]>(nan7)
   const [windowDates, setWindowDates] = useState<string[] | null>(null)
   const [weatherMeta, setWeatherMeta] = useState<{
     rainfallAvailable: boolean
@@ -95,7 +98,10 @@ export default function Dashboard() {
       if (field === "discharge") setDischargeSeries(patch)
       else if (field === "prcp") setPrcpSeries(patch)
       else if (field === "tmax") setTmaxSeries(patch)
-      else setTminSeries(patch)
+      else if (field === "tmin") setTminSeries(patch)
+      else if (field === "awnd") setAwndSeries(patch)
+      else if (field === "snow") setSnowSeries(patch)
+      else setSnowDepthSeries(patch)
     },
     []
   )
@@ -117,6 +123,9 @@ export default function Dashboard() {
         setPrcpSeries(ensure7(data.rainfall_mm, 0))
         setTmaxSeries(ensure7(data.tmax_c, 0))
         setTminSeries(ensure7(data.tmin_c, 0))
+        setAwndSeries(ensure7(data.awnd ?? [], 0))
+        setSnowSeries(ensure7(data.snow ?? [], 0))
+        setSnowDepthSeries(ensure7(data.snow_depth ?? [], 0))
         setWindowDates(data.dates.slice(0, 7))
         setDataRangeStart(data.data_start)
         setDataRangeEnd(data.data_end)
@@ -134,6 +143,9 @@ export default function Dashboard() {
         setPrcpSeries(nan7())
         setTmaxSeries(nan7())
         setTminSeries(nan7())
+        setAwndSeries(nan7())
+        setSnowSeries(nan7())
+        setSnowDepthSeries(nan7())
       } finally {
         setLatestLoading(false)
       }
@@ -167,6 +179,9 @@ export default function Dashboard() {
         recentPrcp: optionalFinite7(prcpSeries),
         recentTmax: optionalFinite7(tmaxSeries),
         recentTmin: optionalFinite7(tminSeries),
+        recentAwnd: optionalFinite7(awndSeries),
+        recentSnow: optionalFinite7(snowSeries),
+        recentSnowDepth: optionalFinite7(snowDepthSeries),
         asOfDate: seriesAsOfDate ?? undefined,
       })
       setResult(prediction)
@@ -195,6 +210,9 @@ export default function Dashboard() {
             prcp={prcpSeries}
             tmax={tmaxSeries}
             tmin={tminSeries}
+            awnd={awndSeries}
+            snow={snowSeries}
+            snow_depth={snowDepthSeries}
             onSeriesCellChange={handleSeriesCellChange}
             weatherHint={weatherHint}
             onPredict={handlePredict}

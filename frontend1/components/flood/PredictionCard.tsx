@@ -1,5 +1,6 @@
 "use client"
 
+import { format, parseISO } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -7,6 +8,15 @@ import { StationSelector } from "./StationSelector"
 import { SevenDayInputs, type FeatureField } from "./SevenDayInputs"
 import type { Station } from "@/lib/constants"
 import { AlertCircle, Loader2, Waves } from "lucide-react"
+
+function formatWindowEndLong(iso: string | null): string | null {
+  if (!iso) return null
+  try {
+    return format(parseISO(iso), "EEEE, MMMM d, yyyy")
+  } catch {
+    return null
+  }
+}
 
 interface PredictionCardProps {
   selectedStation: Station
@@ -16,6 +26,9 @@ interface PredictionCardProps {
   prcp: number[]
   tmax: number[]
   tmin: number[]
+  awnd: number[]
+  snow: number[]
+  snow_depth: number[]
   onSeriesCellChange: (field: FeatureField, index: number, value: number) => void
   weatherHint: string | null
   onPredict: () => void
@@ -42,6 +55,9 @@ export function PredictionCard({
   prcp,
   tmax,
   tmin,
+  awnd,
+  snow,
+  snow_depth,
   onSeriesCellChange,
   weatherHint,
   onPredict,
@@ -57,6 +73,7 @@ export function PredictionCard({
 }: PredictionCardProps) {
   const valueCount = countFiniteDischarge(discharge)
   const isValid = discharge.length >= 7 && discharge.slice(0, 7).every((n) => Number.isFinite(n))
+  const windowEndLong = formatWindowEndLong(windowEndDate)
 
   return (
     <Card className="h-fit">
@@ -67,42 +84,65 @@ export function PredictionCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <StationSelector
-          selectedStation={selectedStation}
-          onSelect={onStationChange}
-          latestLoading={latestLoading}
-        />
-
         {latestError ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             {latestError}
           </div>
         ) : null}
 
-        {autofillLabel && !latestError ? (
-          <p className="text-xs text-muted-foreground">{autofillLabel}</p>
-        ) : null}
-
-        {dataRangeStart && dataRangeEnd && !latestError ? (
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              End of 7-day window
-            </label>
-            <Input
-              type="date"
-              min={dataRangeStart}
-              max={dataRangeEnd}
-              value={windowEndDate ?? ""}
-              onChange={(e) => {
-                const v = e.target.value
-                if (v) onWindowEndDateChange(v)
-              }}
-              disabled={latestLoading}
-              className="font-mono text-sm"
+        <div className="flex w-full flex-row items-start gap-4 sm:gap-6">
+          <div className="min-w-0 basis-0 flex-1 space-y-2">
+            <StationSelector
+              selectedStation={selectedStation}
+              onSelect={onStationChange}
+              latestLoading={latestLoading}
             />
-            <p className="text-xs text-muted-foreground">
-              USGS data available {dataRangeStart} → {dataRangeEnd}. The chart uses the seven days
-              ending on this date.
+            {autofillLabel && !latestError ? (
+              <p className="text-left text-xs text-muted-foreground">{autofillLabel}</p>
+            ) : null}
+          </div>
+
+          {dataRangeStart && dataRangeEnd && !latestError ? (
+            <div className="min-w-0 basis-0 flex-1 space-y-2">
+              <label
+                htmlFor="window-end-date"
+                className="block text-left text-sm font-medium text-foreground"
+              >
+                End of 7-day window
+              </label>
+              <div className="w-full">
+                <Input
+                  id="window-end-date"
+                  type="date"
+                  min={dataRangeStart}
+                  max={dataRangeEnd}
+                  value={windowEndDate ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (v) onWindowEndDateChange(v)
+                  }}
+                  disabled={latestLoading}
+                  className="h-9 w-full min-w-0 font-mono text-sm"
+                />
+              </div>
+              <p className="text-left text-xs text-muted-foreground">
+                USGS data available {dataRangeStart} → {dataRangeEnd}. The chart uses the seven days
+                ending on this date.
+              </p>
+            </div>
+          ) : null}
+        </div>
+
+        {windowEndLong && !latestError ? (
+          <div className="rounded-lg border border-border bg-muted/30 px-4 py-4 text-center">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Window ends on
+            </p>
+            <p className="mt-1 text-lg font-semibold text-foreground sm:text-xl">
+              {windowEndLong}
+            </p>
+            <p className="mt-1 font-mono text-xs text-muted-foreground tabular-nums">
+              {windowEndDate}
             </p>
           </div>
         ) : null}
@@ -113,9 +153,12 @@ export function PredictionCard({
           prcp={prcp}
           tmax={tmax}
           tmin={tmin}
+          awnd={awnd}
+          snow={snow}
+          snow_depth={snow_depth}
           onCellChange={onSeriesCellChange}
-          disabled={latestLoading}
-          weatherHint={weatherHint}
+            disabled={latestLoading}
+            weatherHint={weatherHint}
         />
 
         <div className="flex items-center justify-between text-xs">

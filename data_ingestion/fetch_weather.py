@@ -73,7 +73,8 @@ def _fetch_station_daily(
                 "stationid": station_id,
                 "startdate": win_start.isoformat(),
                 "enddate": win_end.isoformat(),
-                "datatypeid": ["PRCP", "TMAX", "TMIN"],
+                # GHCND daily: precip, temps, wind (m/s), snowfall (mm), snow depth (mm)
+                "datatypeid": ["PRCP", "TMAX", "TMIN", "AWND", "SNOW", "SNWD"],
                 "units": "metric",
                 "limit": limit,
                 "offset": offset,
@@ -87,17 +88,19 @@ def _fetch_station_daily(
                 break
             offset += limit
 
+    _empty_wide = ["STATION", "NAME", "DATE", "PRCP", "TMAX", "TMIN", "AWND", "SNOW", "SNWD"]
+
     if not rows:
-        return pd.DataFrame(columns=["STATION", "NAME", "DATE", "PRCP", "TMAX", "TMIN"])
+        return pd.DataFrame(columns=_empty_wide)
 
     long = pd.DataFrame(rows)
     if long.empty:
-        return pd.DataFrame(columns=["STATION", "NAME", "DATE", "PRCP", "TMAX", "TMIN"])
+        return pd.DataFrame(columns=_empty_wide)
 
     keep_cols = [c for c in ["station", "name", "date", "datatype", "value"] if c in long.columns]
     long = long[keep_cols]
     if set(["station", "date", "datatype", "value"]) - set(long.columns):
-        return pd.DataFrame(columns=["STATION", "NAME", "DATE", "PRCP", "TMAX", "TMIN"])
+        return pd.DataFrame(columns=_empty_wide)
     if "name" not in long.columns:
         long["name"] = station_id
 
@@ -116,14 +119,17 @@ def _fetch_station_daily(
         .reset_index()
         .rename(columns={"station": "STATION", "name": "NAME"})
     )
-    for c in ["PRCP", "TMAX", "TMIN"]:
+    for c in ["PRCP", "TMAX", "TMIN", "AWND", "SNOW", "SNWD"]:
         if c not in wide.columns:
             wide[c] = pd.NA
 
-    out = wide[["STATION", "NAME", "DATE", "PRCP", "TMAX", "TMIN"]].copy()
+    out = wide[["STATION", "NAME", "DATE", "PRCP", "TMAX", "TMIN", "AWND", "SNOW", "SNWD"]].copy()
     out["PRCP"] = pd.to_numeric(out["PRCP"], errors="coerce").fillna(0.0)
     out["TMAX"] = pd.to_numeric(out["TMAX"], errors="coerce")
     out["TMIN"] = pd.to_numeric(out["TMIN"], errors="coerce")
+    out["AWND"] = pd.to_numeric(out["AWND"], errors="coerce")
+    out["SNOW"] = pd.to_numeric(out["SNOW"], errors="coerce")
+    out["SNWD"] = pd.to_numeric(out["SNWD"], errors="coerce")
     out = out.sort_values("DATE").reset_index(drop=True)
     return out
 
@@ -169,7 +175,19 @@ def fetch_weather_daily(
         logger.info("Fetched NOAA rows. site_id=%s station=%s rows=%s", site_id, station_id, len(sdf))
 
     if not parts:
-        return pd.DataFrame(columns=["site_id", "date", "precip_mm", "tmin_c", "tmax_c", "source"])
+        return pd.DataFrame(
+            columns=[
+                "site_id",
+                "date",
+                "precip_mm",
+                "tmin_c",
+                "tmax_c",
+                "awnd",
+                "snow",
+                "snwd_mm",
+                "source",
+            ]
+        )
 
     all_df = pd.concat(parts, ignore_index=True)
     out = pd.DataFrame(
@@ -179,6 +197,9 @@ def fetch_weather_daily(
             "precip_mm": pd.to_numeric(all_df["PRCP"], errors="coerce").fillna(0.0),
             "tmin_c": pd.to_numeric(all_df["TMIN"], errors="coerce"),
             "tmax_c": pd.to_numeric(all_df["TMAX"], errors="coerce"),
+            "awnd": pd.to_numeric(all_df["AWND"], errors="coerce"),
+            "snow": pd.to_numeric(all_df["SNOW"], errors="coerce"),
+            "snwd_mm": pd.to_numeric(all_df["SNWD"], errors="coerce"),
             "source": NOAA_SOURCE,
         }
     )
@@ -196,9 +217,12 @@ def save_raw_weather(df: pd.DataFrame, *, out_dir: str | Path, filename: str) ->
 def save_rainfall_per_location(df: pd.DataFrame, *, out_dir: str | Path) -> list[Path]:
     out_dir = ensure_dir(out_dir)
     paths: list[Path] = []
+    _weather_cols = ["STATION", "NAME", "DATE", "PRCP", "TMAX", "TMIN", "AWND", "SNOW", "SNWD"]
     for location_name, sdf in df.groupby("location_name", sort=True):
-        out = sdf[["STATION", "NAME", "DATE", "PRCP", "TMAX", "TMIN"]].copy()
+        out = sdf[_weather_cols].copy()
         out["PRCP"] = pd.to_numeric(out["PRCP"], errors="coerce").fillna(0.0)
+        for c in ["TMAX", "TMIN", "AWND", "SNOW", "SNWD"]:
+            out[c] = pd.to_numeric(out[c], errors="coerce")
         out = out.sort_values("DATE").reset_index(drop=True)
         filename = f"rainfall_{location_name}.csv"
         path = out_dir / filename

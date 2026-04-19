@@ -222,6 +222,9 @@ def get_latest(
     rainfall_mm = [0.0] * 7
     tmax_c = [0.0] * 7
     tmin_c = [0.0] * 7
+    awnd = [0.0] * 7
+    snow = [0.0] * 7
+    snow_depth = [0.0] * 7
     weather_available = False
 
     if noaa_slug:
@@ -240,12 +243,24 @@ def get_latest(
                 prcp_by_date = dict(zip(noaa["day"], noaa["PRCP"]))
                 tmax_by_date: dict[str, float] = {}
                 tmin_by_date: dict[str, float] = {}
+                awnd_by_date: dict[str, float] = {}
+                snow_by_date: dict[str, float] = {}
+                snwd_by_date: dict[str, float] = {}
                 if "TMAX" in noaa.columns:
                     noaa["TMAX"] = pd.to_numeric(noaa["TMAX"], errors="coerce").fillna(0.0)
                     tmax_by_date = dict(zip(noaa["day"], noaa["TMAX"]))
                 if "TMIN" in noaa.columns:
                     noaa["TMIN"] = pd.to_numeric(noaa["TMIN"], errors="coerce").fillna(0.0)
                     tmin_by_date = dict(zip(noaa["day"], noaa["TMIN"]))
+                if "AWND" in noaa.columns:
+                    noaa["AWND"] = pd.to_numeric(noaa["AWND"], errors="coerce").fillna(0.0)
+                    awnd_by_date = dict(zip(noaa["day"], noaa["AWND"]))
+                if "SNOW" in noaa.columns:
+                    noaa["SNOW"] = pd.to_numeric(noaa["SNOW"], errors="coerce").fillna(0.0)
+                    snow_by_date = dict(zip(noaa["day"], noaa["SNOW"]))
+                if "SNWD" in noaa.columns:
+                    noaa["SNWD"] = pd.to_numeric(noaa["SNWD"], errors="coerce").fillna(0.0)
+                    snwd_by_date = dict(zip(noaa["day"], noaa["SNWD"]))
                 if not tmax_by_date and not tmin_by_date:
                     weather_available = False
                 for i, d in enumerate(dates_dt):
@@ -253,6 +268,9 @@ def get_latest(
                     rainfall_mm[i] = round(float(prcp_by_date.get(day_key, 0.0)), 1)
                     tmax_c[i] = round(float(tmax_by_date.get(day_key, 0.0)), 1)
                     tmin_c[i] = round(float(tmin_by_date.get(day_key, 0.0)), 1)
+                    awnd[i] = round(float(awnd_by_date.get(day_key, 0.0)), 3)
+                    snow[i] = round(float(snow_by_date.get(day_key, 0.0)), 1)
+                    snow_depth[i] = round(float(snwd_by_date.get(day_key, 0.0)), 1)
 
     latest_date = dates[-1]
 
@@ -264,6 +282,9 @@ def get_latest(
         "rainfall_available": rainfall_available,
         "tmax_c": tmax_c,
         "tmin_c": tmin_c,
+        "awnd": awnd,
+        "snow": snow,
+        "snow_depth": snow_depth,
         "weather_available": weather_available,
         "latest_date": latest_date,
         "data_start": data_start,

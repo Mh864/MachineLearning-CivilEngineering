@@ -5,7 +5,14 @@ import { Input } from "@/components/ui/input"
 
 const N = 7
 
-export type FeatureField = "discharge" | "prcp" | "tmax" | "tmin"
+export type FeatureField =
+  | "discharge"
+  | "prcp"
+  | "tmax"
+  | "tmin"
+  | "awnd"
+  | "snow"
+  | "snow_depth"
 
 type SevenDayInputsProps = {
   dates: string[] | null
@@ -13,6 +20,9 @@ type SevenDayInputsProps = {
   prcp: number[]
   tmax: number[]
   tmin: number[]
+  awnd: number[]
+  snow: number[]
+  snow_depth: number[]
   onCellChange: (field: FeatureField, index: number, value: number) => void
   disabled?: boolean
   weatherHint?: string | null
@@ -53,12 +63,19 @@ function numInputValue(v: number): string {
   return Number.isFinite(v) ? String(v) : ""
 }
 
+/** Compact centered field — not full column width */
+const numericInputClassName =
+  "h-8 w-[5.25rem] max-w-full shrink-0 text-center text-xs font-mono tabular-nums px-1.5"
+
 export function SevenDayInputs({
   dates,
   discharge,
   prcp,
   tmax,
   tmin,
+  awnd,
+  snow,
+  snow_depth,
   onCellChange,
   disabled,
   weatherHint,
@@ -68,9 +85,9 @@ export function SevenDayInputs({
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground leading-relaxed">
-        Seven consecutive calendar days, <strong>oldest → newest</strong> (left to right). Discharge,
-        rain, and temperatures are passed through to the model in that order. Wind and snow
-        features from training default to zero when not provided by the API.
+        Seven consecutive calendar days, <strong>oldest → newest</strong> (left to right). USGS discharge
+        and NOAA daily fields (precip, temperatures, wind, snow) are passed to the model when all seven
+        values in a series are filled; otherwise missing series are omitted from the request.
       </p>
       {weatherHint ? (
         <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800 rounded-md px-2 py-1.5">
@@ -94,83 +111,157 @@ export function SevenDayInputs({
             >
               <ColumnDateHeader isoDate={iso} fallbackTitle={fallback} />
 
-              <div className="space-y-1">
-                <Input
-                  type="number"
-                  step="any"
-                  inputMode="decimal"
-                  disabled={disabled}
-                  value={numInputValue(discharge[i] ?? NaN)}
-                  onChange={(e) => {
-                    const raw = e.target.value
-                    const v = raw === "" ? NaN : Number.parseFloat(raw)
-                    onCellChange("discharge", i, v)
-                  }}
-                  className="h-9 font-mono text-sm px-2"
-                  aria-label={`Discharge day ${i + 1}`}
-                />
-                <p className="text-[10px] leading-tight text-muted-foreground text-center px-0.5">
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex w-full justify-center">
+                  <Input
+                    type="number"
+                    step="any"
+                    inputMode="decimal"
+                    disabled={disabled}
+                    value={numInputValue(discharge[i] ?? NaN)}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      const v = raw === "" ? NaN : Number.parseFloat(raw)
+                      onCellChange("discharge", i, v)
+                    }}
+                    className={numericInputClassName}
+                    aria-label={`Discharge day ${i + 1}`}
+                  />
+                </div>
+                <p className="text-[10px] leading-tight text-muted-foreground text-center px-0.5 max-w-[8.5rem]">
                   Daily mean discharge (USGS), ft³/s
                 </p>
               </div>
 
-              <div className="space-y-1">
-                <Input
-                  type="number"
-                  step="any"
-                  inputMode="decimal"
-                  disabled={disabled}
-                  value={numInputValue(prcp[i] ?? NaN)}
-                  onChange={(e) => {
-                    const raw = e.target.value
-                    const v = raw === "" ? NaN : Number.parseFloat(raw)
-                    onCellChange("prcp", i, v)
-                  }}
-                  className="h-9 font-mono text-sm px-2"
-                  aria-label={`Precipitation day ${i + 1}`}
-                />
-                <p className="text-[10px] leading-tight text-muted-foreground text-center px-0.5">
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex w-full justify-center">
+                  <Input
+                    type="number"
+                    step="any"
+                    inputMode="decimal"
+                    disabled={disabled}
+                    value={numInputValue(prcp[i] ?? NaN)}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      const v = raw === "" ? NaN : Number.parseFloat(raw)
+                      onCellChange("prcp", i, v)
+                    }}
+                    className={numericInputClassName}
+                    aria-label={`Precipitation day ${i + 1}`}
+                  />
+                </div>
+                <p className="text-[10px] leading-tight text-muted-foreground text-center px-0.5 max-w-[8.5rem]">
                   Daily precipitation (NOAA), mm/day
                 </p>
               </div>
 
-              <div className="space-y-1">
-                <Input
-                  type="number"
-                  step="any"
-                  inputMode="decimal"
-                  disabled={disabled}
-                  value={numInputValue(tmax[i] ?? NaN)}
-                  onChange={(e) => {
-                    const raw = e.target.value
-                    const v = raw === "" ? NaN : Number.parseFloat(raw)
-                    onCellChange("tmax", i, v)
-                  }}
-                  className="h-9 font-mono text-sm px-2"
-                  aria-label={`Tmax day ${i + 1}`}
-                />
-                <p className="text-[10px] leading-tight text-muted-foreground text-center px-0.5">
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex w-full justify-center">
+                  <Input
+                    type="number"
+                    step="any"
+                    inputMode="decimal"
+                    disabled={disabled}
+                    value={numInputValue(tmax[i] ?? NaN)}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      const v = raw === "" ? NaN : Number.parseFloat(raw)
+                      onCellChange("tmax", i, v)
+                    }}
+                    className={numericInputClassName}
+                    aria-label={`Tmax day ${i + 1}`}
+                  />
+                </div>
+                <p className="text-[10px] leading-tight text-muted-foreground text-center px-0.5 max-w-[8.5rem]">
                   Daily max temperature (NOAA), °C
                 </p>
               </div>
 
-              <div className="space-y-1">
-                <Input
-                  type="number"
-                  step="any"
-                  inputMode="decimal"
-                  disabled={disabled}
-                  value={numInputValue(tmin[i] ?? NaN)}
-                  onChange={(e) => {
-                    const raw = e.target.value
-                    const v = raw === "" ? NaN : Number.parseFloat(raw)
-                    onCellChange("tmin", i, v)
-                  }}
-                  className="h-9 font-mono text-sm px-2"
-                  aria-label={`Tmin day ${i + 1}`}
-                />
-                <p className="text-[10px] leading-tight text-muted-foreground text-center px-0.5">
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex w-full justify-center">
+                  <Input
+                    type="number"
+                    step="any"
+                    inputMode="decimal"
+                    disabled={disabled}
+                    value={numInputValue(tmin[i] ?? NaN)}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      const v = raw === "" ? NaN : Number.parseFloat(raw)
+                      onCellChange("tmin", i, v)
+                    }}
+                    className={numericInputClassName}
+                    aria-label={`Tmin day ${i + 1}`}
+                  />
+                </div>
+                <p className="text-[10px] leading-tight text-muted-foreground text-center px-0.5 max-w-[8.5rem]">
                   Daily min temperature (NOAA), °C
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex w-full justify-center">
+                  <Input
+                    type="number"
+                    step="any"
+                    inputMode="decimal"
+                    disabled={disabled}
+                    value={numInputValue(awnd[i] ?? NaN)}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      const v = raw === "" ? NaN : Number.parseFloat(raw)
+                      onCellChange("awnd", i, v)
+                    }}
+                    className={numericInputClassName}
+                    aria-label={`Mean wind speed day ${i + 1}`}
+                  />
+                </div>
+                <p className="text-[10px] leading-tight text-muted-foreground text-center px-0.5 max-w-[8.5rem]">
+                  Daily mean wind (NOAA AWND), m/s
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex w-full justify-center">
+                  <Input
+                    type="number"
+                    step="any"
+                    inputMode="decimal"
+                    disabled={disabled}
+                    value={numInputValue(snow[i] ?? NaN)}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      const v = raw === "" ? NaN : Number.parseFloat(raw)
+                      onCellChange("snow", i, v)
+                    }}
+                    className={numericInputClassName}
+                    aria-label={`Snowfall day ${i + 1}`}
+                  />
+                </div>
+                <p className="text-[10px] leading-tight text-muted-foreground text-center px-0.5 max-w-[8.5rem]">
+                  Daily snowfall (NOAA SNOW), mm
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex w-full justify-center">
+                  <Input
+                    type="number"
+                    step="any"
+                    inputMode="decimal"
+                    disabled={disabled}
+                    value={numInputValue(snow_depth[i] ?? NaN)}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      const v = raw === "" ? NaN : Number.parseFloat(raw)
+                      onCellChange("snow_depth", i, v)
+                    }}
+                    className={numericInputClassName}
+                    aria-label={`Snow depth day ${i + 1}`}
+                  />
+                </div>
+                <p className="text-[10px] leading-tight text-muted-foreground text-center px-0.5 max-w-[8.5rem]">
+                  Snow depth on ground (NOAA SNWD), mm
                 </p>
               </div>
             </div>

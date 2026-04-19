@@ -135,7 +135,7 @@ Rows with `NaN` in required feature/target fields are dropped.
 ### Status
 
 - `data_ingestion/fetch_weather.py` is fully implemented using NOAA CDO API (`GHCND` daily summaries).
-- It fetches `PRCP`, `TMAX`, `TMIN` per configured site and date range.
+- It fetches `PRCP`, `TMAX`, `TMIN`, `AWND` (mean wind), `SNOW` (snowfall), and `SNWD` (snow depth) per configured site and date range.
 - It writes both:
   - one combined file for all sites
   - one per-location rainfall file (`rainfall_<LocationName>.csv`) used by `modeling/features.py`
@@ -145,7 +145,7 @@ Rows with `NaN` in required feature/target fields are dropped.
 - Provider: NOAA NCEI Climate Data Online (CDO)
 - Endpoint: `https://www.ncei.noaa.gov/cdo-web/api/v2/data`
 - Dataset ID: `GHCND`
-- Data types fetched: `PRCP`, `TMAX`, `TMIN` (with optional `AWND`, `SNOW`, `SNWD` when available)
+- Data types fetched: `PRCP`, `TMAX`, `TMIN`, `AWND`, `SNOW`, `SNWD`
 - Units: metric
 - Authentication: required CDO token (`--token` or `NOAA_CDO_TOKEN` env var)
 
@@ -173,6 +173,9 @@ Rows with `NaN` in required feature/target fields are dropped.
 - `precip_mm`
 - `tmin_c`
 - `tmax_c`
+- `awnd` (mean wind speed, m/s)
+- `snow` (daily snowfall, mm)
+- `snwd_mm` (snow depth on ground, mm)
 - `source`
 
 ### Per-location rainfall schema (`rainfall_<LocationName>.csv`)
@@ -183,12 +186,15 @@ Rows with `NaN` in required feature/target fields are dropped.
 - `PRCP`
 - `TMAX`
 - `TMIN`
+- `AWND`
+- `SNOW`
+- `SNWD`
 
 Notes:
 
 - `PRCP` is precipitation in millimeters.
 - Missing `PRCP` values are filled with `0.0`.
-- These per-location files are what `modeling/features.py` reads via `load_noaa_precip()`.
+- These per-location files are what `modeling/features.py` reads via `load_noaa_weather()` (and `load_noaa_precip()` for precip-only helpers).
 
 ### Site-to-location mapping used by features
 
