@@ -258,3 +258,7 @@ Set **`NEXT_PUBLIC_API_URL`** if the FastAPI backend is not at `http://127.0.0.1
 **Done:** multi-site ingestion through `features.csv`; chronological evaluation; Pipeline logistic baseline; LightGBM; **validation-set probability calibration** (default); aligned `compare_models` with **Brier** and **per-site test** metrics; **Step 3 pytest feature parity** (`tests/test_feature_parity.py`) + `merge_weather_into_site_discharge`; NOAA verification script; naive baselines; coefficient/importance exports (unwraps calibrated models); forward-window test diagnostics; `/health` (includes optional **calibration** metadata); lead-time script.
 
 **Future:** production monitoring stack, calibration **visualization** dashboards, broader automated tests (e.g. API smoke tests), hyperparameter search beyond fixed configs.
+
+
+
+Signe de test a amrcher: Si tu vois ce message. Tu as la version la plus recente
