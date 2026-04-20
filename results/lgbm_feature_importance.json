@@ -1,102 +1,126 @@
 {
   "model_path": "models/lgbm_model.pkl",
-  "model_name": "lightgbm",
+  "model_name": "lightgbm_multiclass",
   "feature_importance_sorted": [
     {
       "feature": "discharge_diff_1",
-      "importance": 1017.0
+      "importance": 2045.0
     },
     {
-      "feature": "discharge_lag1",
-      "importance": 717.0
+      "feature": "days_since_last_heavy_rain",
+      "importance": 1955.0
     },
     {
-      "feature": "discharge_roll_mean_3",
-      "importance": 662.0
+      "feature": "discharge_roll_std_7",
+      "importance": 1606.0
     },
     {
-      "feature": "discharge_roll_mean_7",
-      "importance": 649.0
+      "feature": "discharge_roll_max_3",
+      "importance": 1379.0
     },
     {
       "feature": "awnd",
-      "importance": 615.0
+      "importance": 1360.0
     },
     {
-      "feature": "month",
-      "importance": 567.0
+      "feature": "discharge_lag1",
+      "importance": 1344.0
+    },
+    {
+      "feature": "discharge_roll_std_3",
+      "importance": 1304.0
+    },
+    {
+      "feature": "discharge_roll_max_7",
+      "importance": 1264.0
     },
     {
       "feature": "prcp_roll_sum_7",
-      "importance": 557.0
+      "importance": 1231.0
     },
     {
-      "feature": "discharge_lag3",
-      "importance": 544.0
-    },
-    {
-      "feature": "discharge_lag2",
-      "importance": 444.0
-    },
-    {
-      "feature": "temp_range",
-      "importance": 416.0
+      "feature": "discharge_roll_mean_3",
+      "importance": 1171.0
     },
     {
       "feature": "tmin",
-      "importance": 408.0
+      "importance": 1118.0
+    },
+    {
+      "feature": "discharge_lag3",
+      "importance": 1041.0
     },
     {
       "feature": "tavg",
-      "importance": 386.0
+      "importance": 1033.0
+    },
+    {
+      "feature": "discharge_roll_mean_7",
+      "importance": 1020.0
+    },
+    {
+      "feature": "temp_range",
+      "importance": 998.0
+    },
+    {
+      "feature": "month_cos",
+      "importance": 807.0
+    },
+    {
+      "feature": "discharge_lag2",
+      "importance": 794.0
     },
     {
       "feature": "tmax",
-      "importance": 328.0
-    },
-    {
-      "feature": "prcp_x_discharge_lag1",
-      "importance": 313.0
+      "importance": 764.0
     },
     {
       "feature": "prcp_roll_sum_3_x_discharge_roll_mean_3",
-      "importance": 297.0
+      "importance": 750.0
+    },
+    {
+      "feature": "prcp_x_discharge_lag1",
+      "importance": 678.0
+    },
+    {
+      "feature": "month_sin",
+      "importance": 627.0
     },
     {
       "feature": "prcp_roll_sum_3",
-      "importance": 215.0
-    },
-    {
-      "feature": "prcp_lag2",
-      "importance": 212.0
+      "importance": 621.0
     },
     {
       "feature": "prcp_lag3",
-      "importance": 207.0
+      "importance": 533.0
     },
     {
       "feature": "prcp_lag1",
-      "importance": 200.0
+      "importance": 512.0
+    },
+    {
+      "feature": "prcp_lag2",
+      "importance": 467.0
     },
     {
       "feature": "prcp_roll_mean_7",
-      "importance": 94.0
+      "importance": 237.0
     },
     {
       "feature": "snow_depth",
-      "importance": 74.0
+      "importance": 169.0
     },
     {
       "feature": "snow",
-      "importance": 30.0
-    },
-    {
-      "feature": "prcp_roll_mean_3",
-      "importance": 28.0
+      "importance": 73.0
     },
     {
       "feature": "heavy_rain_flag_1d",
-      "importance": 20.0
+      "importance": 51.0
+    },
+    {
+      "feature": "prcp_roll_mean_3",
+      "importance": 48.0
     }
   ]
 }

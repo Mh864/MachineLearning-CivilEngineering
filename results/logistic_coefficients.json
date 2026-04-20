@@ -1,102 +1,504 @@
 {
   "model_path": "models/model.pkl",
-  "model_name": "logistic_baseline",
-  "coefficients_sorted_by_abs": [
+  "model_name": "logistic_multiclass",
+  "n_classes": 3,
+  "per_class": [
+    {
+      "class_index": 0,
+      "coefficients_sorted_by_abs": [
+        {
+          "feature": "discharge_roll_max_7",
+          "coefficient": 1.1598447482397491
+        },
+        {
+          "feature": "discharge_lag1",
+          "coefficient": -0.8951410397179501
+        },
+        {
+          "feature": "discharge_roll_std_7",
+          "coefficient": -0.6962930152834498
+        },
+        {
+          "feature": "discharge_diff_1",
+          "coefficient": -0.6490226698109154
+        },
+        {
+          "feature": "discharge_roll_mean_3",
+          "coefficient": -0.5921022127822442
+        },
+        {
+          "feature": "discharge_roll_max_3",
+          "coefficient": -0.44746166483197164
+        },
+        {
+          "feature": "month_cos",
+          "coefficient": 0.42611158640686597
+        },
+        {
+          "feature": "discharge_lag3",
+          "coefficient": 0.304000026597661
+        },
+        {
+          "feature": "days_since_last_heavy_rain",
+          "coefficient": 0.2514216266381786
+        },
+        {
+          "feature": "discharge_roll_std_3",
+          "coefficient": -0.22939894555632115
+        },
+        {
+          "feature": "snow_depth",
+          "coefficient": 0.22735038542348932
+        },
+        {
+          "feature": "discharge_roll_mean_7",
+          "coefficient": -0.19373620561094845
+        },
+        {
+          "feature": "tmin",
+          "coefficient": 0.1796076686895628
+        },
+        {
+          "feature": "tavg",
+          "coefficient": 0.17823575712010248
+        },
+        {
+          "feature": "discharge_lag2",
+          "coefficient": 0.1731204038562191
+        },
+        {
+          "feature": "tmax",
+          "coefficient": 0.16758832498953277
+        },
+        {
+          "feature": "month_sin",
+          "coefficient": -0.1628263432963267
+        },
+        {
+          "feature": "prcp_roll_mean_7",
+          "coefficient": -0.16019743333752257
+        },
+        {
+          "feature": "prcp_roll_sum_7",
+          "coefficient": -0.16019743333751288
+        },
+        {
+          "feature": "prcp_lag2",
+          "coefficient": 0.1535504945121524
+        },
+        {
+          "feature": "prcp_lag1",
+          "coefficient": 0.15335344083908592
+        },
+        {
+          "feature": "prcp_roll_mean_3",
+          "coefficient": -0.13938781543129586
+        },
+        {
+          "feature": "prcp_roll_sum_3",
+          "coefficient": -0.13938781543128204
+        },
+        {
+          "feature": "awnd",
+          "coefficient": 0.10614752348639035
+        },
+        {
+          "feature": "prcp_roll_sum_3_x_discharge_roll_mean_3",
+          "coefficient": 0.09340434814670366
+        },
+        {
+          "feature": "temp_range",
+          "coefficient": 0.04729752925386342
+        },
+        {
+          "feature": "heavy_rain_flag_1d",
+          "coefficient": 0.03696537148113073
+        },
+        {
+          "feature": "prcp_x_discharge_lag1",
+          "coefficient": 0.03489015300566063
+        },
+        {
+          "feature": "prcp_lag3",
+          "coefficient": 0.012194719438614141
+        },
+        {
+          "feature": "snow",
+          "coefficient": 0.004981179968300529
+        }
+      ]
+    },
+    {
+      "class_index": 1,
+      "coefficients_sorted_by_abs": [
+        {
+          "feature": "discharge_roll_max_7",
+          "coefficient": -0.7358167492127113
+        },
+        {
+          "feature": "discharge_roll_std_7",
+          "coefficient": 0.4961163996227938
+        },
+        {
+          "feature": "discharge_lag1",
+          "coefficient": 0.49333806366555305
+        },
+        {
+          "feature": "discharge_roll_max_3",
+          "coefficient": -0.42927441161770125
+        },
+        {
+          "feature": "discharge_roll_mean_7",
+          "coefficient": 0.4041032772911225
+        },
+        {
+          "feature": "discharge_roll_mean_3",
+          "coefficient": 0.3352879095747913
+        },
+        {
+          "feature": "month_sin",
+          "coefficient": 0.28413269583446105
+        },
+        {
+          "feature": "discharge_diff_1",
+          "coefficient": 0.2718730866609428
+        },
+        {
+          "feature": "days_since_last_heavy_rain",
+          "coefficient": -0.22868883506408827
+        },
+        {
+          "feature": "discharge_roll_std_3",
+          "coefficient": 0.18977819604115503
+        },
+        {
+          "feature": "temp_range",
+          "coefficient": -0.13388448711897297
+        },
+        {
+          "feature": "awnd",
+          "coefficient": -0.1307494522246292
+        },
+        {
+          "feature": "prcp_roll_sum_3_x_discharge_roll_mean_3",
+          "coefficient": -0.1282040533442881
+        },
+        {
+          "feature": "discharge_lag3",
+          "coefficient": -0.1061727183478605
+        },
+        {
+          "feature": "prcp_lag2",
+          "coefficient": 0.0672239400955497
+        },
+        {
+          "feature": "snow_depth",
+          "coefficient": -0.05404507982701958
+        },
+        {
+          "feature": "discharge_lag2",
+          "coefficient": -0.05068942170544967
+        },
+        {
+          "feature": "month_cos",
+          "coefficient": -0.05012718202188778
+        },
+        {
+          "feature": "prcp_lag1",
+          "coefficient": 0.04111058229272117
+        },
+        {
+          "feature": "tmax",
+          "coefficient": -0.039337613356832384
+        },
+        {
+          "feature": "prcp_roll_sum_7",
+          "coefficient": 0.03885443189963309
+        },
+        {
+          "feature": "prcp_roll_mean_7",
+          "coefficient": 0.03885443189962707
+        },
+        {
+          "feature": "tmin",
+          "coefficient": 0.03040446877652085
+        },
+        {
+          "feature": "heavy_rain_flag_1d",
+          "coefficient": 0.025041160583509192
+        },
+        {
+          "feature": "prcp_roll_sum_3",
+          "coefficient": -0.014945728457093766
+        },
+        {
+          "feature": "prcp_roll_mean_3",
+          "coefficient": -0.014945728457079588
+        },
+        {
+          "feature": "prcp_lag3",
+          "coefficient": 0.011196242580188823
+        },
+        {
+          "feature": "tavg",
+          "coefficient": -0.008431743148898324
+        },
+        {
+          "feature": "prcp_x_discharge_lag1",
+          "coefficient": 0.0065410823975951705
+        },
+        {
+          "feature": "snow",
+          "coefficient": -0.00617753629718496
+        }
+      ]
+    },
+    {
+      "class_index": 2,
+      "coefficients_sorted_by_abs": [
+        {
+          "feature": "discharge_roll_max_3",
+          "coefficient": 0.8767360764496808
+        },
+        {
+          "feature": "discharge_roll_max_7",
+          "coefficient": -0.42402799902702537
+        },
+        {
+          "feature": "discharge_lag1",
+          "coefficient": 0.40180297605239584
+        },
+        {
+          "feature": "discharge_diff_1",
+          "coefficient": 0.37714958314997565
+        },
+        {
+          "feature": "month_cos",
+          "coefficient": -0.37598440438498276
+        },
+        {
+          "feature": "discharge_roll_mean_3",
+          "coefficient": 0.25681430320744253
+        },
+        {
+          "feature": "prcp_lag2",
+          "coefficient": -0.22077443460772
+        },
+        {
+          "feature": "discharge_roll_mean_7",
+          "coefficient": -0.2103670716801779
+        },
+        {
+          "feature": "tmin",
+          "coefficient": -0.21001213746607983
+        },
+        {
+          "feature": "discharge_roll_std_7",
+          "coefficient": 0.2001766156606732
+        },
+        {
+          "feature": "discharge_lag3",
+          "coefficient": -0.19782730824976222
+        },
+        {
+          "feature": "prcp_lag1",
+          "coefficient": -0.19446402313181665
+        },
+        {
+          "feature": "snow_depth",
+          "coefficient": -0.1733053055964766
+        },
+        {
+          "feature": "tavg",
+          "coefficient": -0.16980401397119527
+        },
+        {
+          "feature": "prcp_roll_mean_3",
+          "coefficient": 0.15433354388837758
+        },
+        {
+          "feature": "prcp_roll_sum_3",
+          "coefficient": 0.154333543888376
+        },
+        {
+          "feature": "tmax",
+          "coefficient": -0.1282507116326913
+        },
+        {
+          "feature": "discharge_lag2",
+          "coefficient": -0.12243098215078449
+        },
+        {
+          "feature": "prcp_roll_sum_7",
+          "coefficient": 0.12134300143789233
+        },
+        {
+          "feature": "prcp_roll_mean_7",
+          "coefficient": 0.12134300143787462
+        },
+        {
+          "feature": "month_sin",
+          "coefficient": -0.12130635253813427
+        },
+        {
+          "feature": "temp_range",
+          "coefficient": 0.08658695786510816
+        },
+        {
+          "feature": "heavy_rain_flag_1d",
+          "coefficient": -0.06200653206463401
+        },
+        {
+          "feature": "prcp_x_discharge_lag1",
+          "coefficient": -0.0414312354032627
+        },
+        {
+          "feature": "discharge_roll_std_3",
+          "coefficient": 0.0396207495151776
+        },
+        {
+          "feature": "prcp_roll_sum_3_x_discharge_roll_mean_3",
+          "coefficient": 0.03479970519756416
+        },
+        {
+          "feature": "awnd",
+          "coefficient": 0.024601928738249706
+        },
+        {
+          "feature": "prcp_lag3",
+          "coefficient": -0.023390962018797905
+        },
+        {
+          "feature": "days_since_last_heavy_rain",
+          "coefficient": -0.022732791574109946
+        },
+        {
+          "feature": "snow",
+          "coefficient": 0.0011963563288899394
+        }
+      ]
+    }
+  ],
+  "aggregate_mean_abs": [
+    {
+      "feature": "discharge_roll_max_7",
+      "mean_abs_coefficient": 0.7732298321598287
+    },
     {
       "feature": "discharge_lag1",
-      "coefficient": 0.9075183076743883
+      "mean_abs_coefficient": 0.5967606931452997
     },
     {
-      "feature": "discharge_roll_mean_7",
-      "coefficient": -0.8466204398305625
+      "feature": "discharge_roll_max_3",
+      "mean_abs_coefficient": 0.5844907176331179
     },
     {
-      "feature": "discharge_roll_mean_3",
-      "coefficient": 0.7988848864687046
+      "feature": "discharge_roll_std_7",
+      "mean_abs_coefficient": 0.4641953435223056
     },
     {
       "feature": "discharge_diff_1",
-      "coefficient": 0.5867294425513551
+      "mean_abs_coefficient": 0.4326817798739446
     },
     {
-      "feature": "discharge_lag2",
-      "coefficient": 0.42054786081347345
+      "feature": "discharge_roll_mean_3",
+      "mean_abs_coefficient": 0.39473480852149273
     },
     {
-      "feature": "prcp_lag2",
-      "coefficient": -0.39163838724337013
+      "feature": "month_cos",
+      "mean_abs_coefficient": 0.28407439093791215
     },
     {
-      "feature": "prcp_roll_sum_3",
-      "coefficient": 0.32255139156253326
-    },
-    {
-      "feature": "prcp_roll_mean_3",
-      "coefficient": 0.32255139156253176
-    },
-    {
-      "feature": "prcp_lag1",
-      "coefficient": -0.32062769990272433
-    },
-    {
-      "feature": "snow_depth",
-      "coefficient": -0.24728971165544703
+      "feature": "discharge_roll_mean_7",
+      "mean_abs_coefficient": 0.2694021848607496
     },
     {
       "feature": "discharge_lag3",
-      "coefficient": -0.20197848821341183
+      "mean_abs_coefficient": 0.20266668439842792
+    },
+    {
+      "feature": "month_sin",
+      "mean_abs_coefficient": 0.189421797222974
+    },
+    {
+      "feature": "days_since_last_heavy_rain",
+      "mean_abs_coefficient": 0.16761441775879227
+    },
+    {
+      "feature": "discharge_roll_std_3",
+      "mean_abs_coefficient": 0.1529326303708846
+    },
+    {
+      "feature": "snow_depth",
+      "mean_abs_coefficient": 0.15156692361566185
+    },
+    {
+      "feature": "prcp_lag2",
+      "mean_abs_coefficient": 0.1471829564051407
     },
     {
       "feature": "tmin",
-      "coefficient": -0.19903470562195819
+      "mean_abs_coefficient": 0.1400080916440545
     },
     {
-      "feature": "prcp_roll_sum_7",
-      "coefficient": 0.19195128363893546
-    },
-    {
-      "feature": "prcp_roll_mean_7",
-      "coefficient": 0.19195128363893102
-    },
-    {
-      "feature": "temp_range",
-      "coefficient": 0.1468117910518549
+      "feature": "prcp_lag1",
+      "mean_abs_coefficient": 0.12964268208787458
     },
     {
       "feature": "tavg",
-      "coefficient": -0.14288390914062074
+      "mean_abs_coefficient": 0.11882383808006536
     },
     {
-      "feature": "heavy_rain_flag_1d",
-      "coefficient": -0.1200446336269669
+      "feature": "discharge_lag2",
+      "mean_abs_coefficient": 0.11541360257081774
     },
     {
       "feature": "tmax",
-      "coefficient": -0.08982566610548452
+      "mean_abs_coefficient": 0.11172554999301883
     },
     {
-      "feature": "month",
-      "coefficient": -0.08709340053092844
+      "feature": "prcp_roll_sum_7",
+      "mean_abs_coefficient": 0.10679828889167943
+    },
+    {
+      "feature": "prcp_roll_mean_7",
+      "mean_abs_coefficient": 0.10679828889167475
+    },
+    {
+      "feature": "prcp_roll_mean_3",
+      "mean_abs_coefficient": 0.10288902925891767
+    },
+    {
+      "feature": "prcp_roll_sum_3",
+      "mean_abs_coefficient": 0.10288902925891726
+    },
+    {
+      "feature": "temp_range",
+      "mean_abs_coefficient": 0.08925632474598151
     },
     {
       "feature": "awnd",
-      "coefficient": 0.06667694098233891
+      "mean_abs_coefficient": 0.08716630148308975
     },
     {
       "feature": "prcp_roll_sum_3_x_discharge_roll_mean_3",
-      "coefficient": -0.05758558026356101
+      "mean_abs_coefficient": 0.0854693688961853
     },
     {
-      "feature": "prcp_lag3",
-      "coefficient": -0.048946815062888255
+      "feature": "heavy_rain_flag_1d",
+      "mean_abs_coefficient": 0.04133768804309131
     },
     {
       "feature": "prcp_x_discharge_lag1",
-      "coefficient": -0.02718991079235801
+      "mean_abs_coefficient": 0.02762082360217283
+    },
+    {
+      "feature": "prcp_lag3",
+      "mean_abs_coefficient": 0.01559397467920029
     },
     {
       "feature": "snow",
-      "coefficient": -0.012678131821184659
+      "mean_abs_coefficient": 0.004118357531458476
     }
   ]
 }

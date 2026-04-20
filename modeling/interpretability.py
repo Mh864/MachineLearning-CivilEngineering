@@ -18,20 +18,33 @@ from modeling.calibration import unwrap_calibrated_estimator
 from modeling.features import FEATURE_COLUMNS
 
 
-def _logistic_coefficients(model: Any, feature_cols: list[str]) -> list[dict[str, float]]:
+def _logistic_coefficients(model: Any, feature_cols: list[str]) -> dict[str, Any]:
     if hasattr(model, "named_steps") and "clf" in model.named_steps:
-        coef = np.asarray(model.named_steps["clf"].coef_).ravel()
+        coef = np.asarray(model.named_steps["clf"].coef_, dtype=float)
     elif hasattr(model, "coef_"):
-        coef = np.asarray(model.coef_).ravel()
+        coef = np.asarray(model.coef_, dtype=float)
     else:
         raise TypeError("Expected sklearn LogisticRegression or Pipeline ending in LogisticRegression.")
 
-    if len(coef) != len(feature_cols):
-        raise ValueError(f"Coefficient length {len(coef)} != n_features {len(feature_cols)}")
+    if coef.ndim == 1:
+        coef = coef.reshape(1, -1)
+    if coef.shape[1] != len(feature_cols):
+        raise ValueError(f"Coefficient width {coef.shape[1]} != n_features {len(feature_cols)}")
 
-    out = [{"feature": c, "coefficient": float(w)} for c, w in zip(feature_cols, coef, strict=True)]
-    out.sort(key=lambda r: abs(r["coefficient"]), reverse=True)
-    return out
+    per_class: list[dict[str, Any]] = []
+    for class_idx in range(coef.shape[0]):
+        row = [{"feature": c, "coefficient": float(w)} for c, w in zip(feature_cols, coef[class_idx], strict=True)]
+        row.sort(key=lambda r: abs(r["coefficient"]), reverse=True)
+        per_class.append({"class_index": int(class_idx), "coefficients_sorted_by_abs": row})
+
+    mean_abs = np.mean(np.abs(coef), axis=0)
+    aggregate = [{"feature": c, "mean_abs_coefficient": float(v)} for c, v in zip(feature_cols, mean_abs, strict=True)]
+    aggregate.sort(key=lambda r: r["mean_abs_coefficient"], reverse=True)
+    return {
+        "n_classes": int(coef.shape[0]),
+        "per_class": per_class,
+        "aggregate_mean_abs": aggregate,
+    }
 
 
 def _lgbm_importance(model: Any, feature_cols: list[str]) -> list[dict[str, float]]:
@@ -61,7 +74,7 @@ def export_interpretability(
         payload = {
             "model_path": str(logistic_path),
             "model_name": art.get("model_name", "logistic"),
-            "coefficients_sorted_by_abs": rows,
+            **rows,
         }
         path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         written["logistic"] = path

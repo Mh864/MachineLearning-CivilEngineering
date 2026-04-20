@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
-from modeling.evaluate import _metrics
+from modeling.evaluate import _metrics, _multiclass_metrics
 from modeling.features import FEATURE_COLUMNS
 from modeling.utils import time_based_split
 
@@ -29,14 +29,16 @@ def forward_window_stability(
 ) -> Path:
     df = pd.read_csv(features_path, dtype={"site_id": "string"})
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
-    df["target"] = pd.to_numeric(df["target"], errors="coerce")
-    df = df.dropna(subset=["date", "target"]).sort_values(["site_id", "date"]).reset_index(drop=True)
-
     artifact = joblib.load(model_path)
     model = artifact["model"]
     feature_cols = artifact.get("feature_columns", FEATURE_COLUMNS)
+    target_col = artifact.get("target_column", "target")
+    target_type = artifact.get("target_type", "binary")
 
-    split = time_based_split(df, time_col="date", target_col="target", train_frac=0.70, val_frac=0.15)
+    df[target_col] = pd.to_numeric(df[target_col], errors="coerce")
+    df = df.dropna(subset=["date", target_col]).sort_values(["site_id", "date"]).reset_index(drop=True)
+
+    split = time_based_split(df, time_col="date", target_col=target_col, train_frac=0.70, val_frac=0.15)
 
     Xt = split.X_test.copy()
     mask = Xt[list(feature_cols)].notna().all(axis=1)
@@ -44,9 +46,9 @@ def forward_window_stability(
     y_test = split.y_test.loc[Xt.index].astype(int)
 
     sub = Xt[list(feature_cols) + ["date"]].copy()
-    sub["target"] = y_test.to_numpy()
+    sub[target_col] = y_test.to_numpy()
     sub = sub.sort_values("date").reset_index(drop=True)
-    y = sub["target"].astype(int).to_numpy()
+    y = sub[target_col].astype(int).to_numpy()
     X = sub[list(feature_cols)]
 
     n = len(sub)
@@ -63,7 +65,10 @@ def forward_window_stability(
         X_w = X.iloc[lo:hi]
         y_w = y[lo:hi]
         y_pred = model.predict(X_w)
-        m = _metrics(y_w, y_pred)
+        if target_type == "multiclass":
+            m = _multiclass_metrics(y_w, y_pred)
+        else:
+            m = _metrics(y_w, y_pred)
         chunk: dict[str, object] = {
             "window_index": i,
             "n_rows": int(hi - lo),
@@ -72,7 +77,7 @@ def forward_window_stability(
             "metrics": m,
         }
         try:
-            if hasattr(model, "predict_proba"):
+            if target_type != "multiclass" and hasattr(model, "predict_proba"):
                 proba = model.predict_proba(X_w)[:, 1]
                 chunk["test_roc_auc"] = float(roc_auc_score(y_w, proba))
         except Exception:
@@ -81,6 +86,8 @@ def forward_window_stability(
 
     report = {
         "model_path": str(model_path),
+        "target_type": target_type,
+        "target_column": target_col,
         "n_windows": n_windows,
         "n_test_rows_used": n,
         "windows": windows,

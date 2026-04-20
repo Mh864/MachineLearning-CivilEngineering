@@ -251,6 +251,12 @@ npm run dev
 
 Set **`NEXT_PUBLIC_API_URL`** if the FastAPI backend is not at `http://127.0.0.1:8000` (no trailing slash). Run **`python run_api.py`** in a separate terminal so the UI can reach `/latest`, `/predict`, and `/predict-stage`.
 
+The dashboard keeps the same design language while adding analytics cards:
+- class probability decomposition (normal/medium/high),
+- input diagnostics (window min/max/mean/volatility),
+- stage forecast summary,
+- operational model status and last refresh metadata (from `/health`).
+
 ## Documentation
 
 | File | Contents |

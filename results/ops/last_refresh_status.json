@@ -1,34 +1,37 @@
 {
   "status": "success",
-  "started_at_utc": "2026-04-20T13:34:56.797276+00:00",
-  "finished_at_utc": "2026-04-20T13:35:56.151436+00:00",
-  "duration_seconds": 59.35,
+  "started_at_utc": "2026-04-20T14:50:33.822951+00:00",
+  "finished_at_utc": "2026-04-20T14:51:26.469651+00:00",
+  "duration_seconds": 52.65,
   "command": [
     "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
     "run_pipeline.py",
     "--start-date",
     "2018-01-01",
     "--end-date",
-    "2024-12-31",
+    "2026-04-20",
     "--model-type",
-    "both"
+    "both",
+    "--skip-fetch",
+    "--with-stage"
   ],
-  "log_path": "results\\ops\\logs\\refresh_20260420T133456Z.log",
+  "log_path": "results\\ops\\logs\\refresh_20260420T145033Z.log",
   "args": {
     "start_date": "2018-01-01",
-    "end_date": "2024-12-31",
+    "end_date": "2026-04-20",
     "model_type": "both",
-    "skip_fetch": false,
-    "no_calibration": false
+    "skip_fetch": true,
+    "no_calibration": false,
+    "with_stage": true
   },
   "model_backups": [
     {
       "model": "model.pkl",
-      "backup_path": "results\\ops\\model_backups\\20260420T133456Z_model.pkl"
+      "backup_path": "results\\ops\\model_backups\\20260420T145033Z_model.pkl"
     },
     {
       "model": "lgbm_model.pkl",
-      "backup_path": "results\\ops\\model_backups\\20260420T133456Z_lgbm_model.pkl"
+      "backup_path": "results\\ops\\model_backups\\20260420T145033Z_lgbm_model.pkl"
     }
   ]
 }

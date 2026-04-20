@@ -1,74 +1,73 @@
 {
-  "generated_at_utc": "2026-04-20T13:35:57.460673+00:00",
+  "generated_at_utc": "2026-04-20T14:51:27.604103+00:00",
   "status": "alert",
   "alerts": [
     {
       "type": "drift",
       "column": "discharge_lag1",
-      "psi": 0.5037,
+      "psi": 0.241,
       "threshold": 0.2
     },
     {
       "type": "drift",
       "column": "discharge_roll_mean_7",
-      "psi": 0.5264,
+      "psi": 0.2922,
       "threshold": 0.2
     },
     {
       "type": "drift",
-      "column": "month",
-      "psi": 12.2597,
+      "column": "month_sin",
+      "psi": 9.9185,
       "threshold": 0.2
     },
     {
-      "type": "performance_f1_drop",
-      "early_avg_f1": 0.7974,
-      "late_avg_f1": 0.6726,
-      "drop": 0.1248
-    },
-    {
-      "type": "performance_brier_high",
-      "test_brier": 0.0396,
-      "threshold": 0.02
+      "type": "drift",
+      "column": "month_cos",
+      "psi": 13.2306,
+      "threshold": 0.2
     }
   ],
   "missingness": {
-    "recent_rows": 300,
+    "recent_rows": 297,
     "reference_rows": 1800,
     "threshold_increase_pp": 10.0,
     "columns": {
       "discharge": {
-        "recent_missing_pct": 0.0,
-        "reference_missing_pct": 0.0,
-        "delta_pp": 0.0
+        "recent_missing_pct": 0.337,
+        "reference_missing_pct": 0.333,
+        "delta_pp": 0.003
       },
       "stage": {
-        "recent_missing_pct": 70.0,
-        "reference_missing_pct": 70.111,
-        "delta_pp": -0.111
+        "recent_missing_pct": 69.697,
+        "reference_missing_pct": 70.333,
+        "delta_pp": -0.636
       }
     },
     "alerts": []
   },
   "drift": {
-    "recent_rows": 300,
-    "reference_rows": 1800,
+    "recent_rows": 289,
+    "reference_rows": 1773,
     "psi_threshold": 0.2,
     "columns": {
       "discharge_lag1": {
-        "psi": 0.5037,
+        "psi": 0.241,
         "threshold": 0.2
       },
       "discharge_roll_mean_7": {
-        "psi": 0.5264,
+        "psi": 0.2922,
         "threshold": 0.2
       },
       "prcp_roll_sum_7": {
-        "psi": 0.0867,
+        "psi": 0.0,
         "threshold": 0.2
       },
-      "month": {
-        "psi": 12.2597,
+      "month_sin": {
+        "psi": 9.9185,
+        "threshold": 0.2
+      },
+      "month_cos": {
+        "psi": 13.2306,
         "threshold": 0.2
       }
     },
@@ -76,19 +75,25 @@
       {
         "type": "drift",
         "column": "discharge_lag1",
-        "psi": 0.5037,
+        "psi": 0.241,
         "threshold": 0.2
       },
       {
         "type": "drift",
         "column": "discharge_roll_mean_7",
-        "psi": 0.5264,
+        "psi": 0.2922,
         "threshold": 0.2
       },
       {
         "type": "drift",
-        "column": "month",
-        "psi": 12.2597,
+        "column": "month_sin",
+        "psi": 9.9185,
+        "threshold": 0.2
+      },
+      {
+        "type": "drift",
+        "column": "month_cos",
+        "psi": 13.2306,
         "threshold": 0.2
       }
     ]
@@ -97,29 +102,12 @@
     "threshold_f1_drop": 0.1,
     "threshold_brier_increase": 0.02,
     "comparison_snapshot": {
-      "best_model_by_test_f1": "lightgbm",
-      "validation_f1": 0.7258278145695364,
-      "test_f1": 0.7645739910313901,
-      "test_brier": 0.039610024218929625
+      "best_model_by_test_f1": "lightgbm_multiclass",
+      "validation_f1": null,
+      "test_f1": null,
+      "test_brier": null
     },
-    "forward_window_f1": {
-      "early_avg_f1": 0.7974,
-      "late_avg_f1": 0.6726,
-      "delta": -0.1248
-    },
-    "alerts": [
-      {
-        "type": "performance_f1_drop",
-        "early_avg_f1": 0.7974,
-        "late_avg_f1": 0.6726,
-        "drop": 0.1248
-      },
-      {
-        "type": "performance_brier_high",
-        "test_brier": 0.0396,
-        "threshold": 0.02
-      }
-    ]
+    "alerts": []
   },
   "config_used": {
     "recent_window_days": 30,
@@ -130,7 +118,8 @@
       "discharge_lag1",
       "discharge_roll_mean_7",
       "prcp_roll_sum_7",
-      "month"
+      "month_sin",
+      "month_cos"
     ],
     "missingness_columns": [
       "discharge",

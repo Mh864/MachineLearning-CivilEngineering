@@ -8,7 +8,7 @@ import joblib
 import numpy as np
 import pandas as pd
 
-from modeling.evaluate import _metrics
+from modeling.evaluate import _metrics, _multiclass_metrics
 from modeling.features import FEATURE_COLUMNS, SITE_TO_NOAA, _add_features_per_site, load_noaa_precip
 from modeling.utils import time_based_split
 
@@ -38,10 +38,11 @@ def analyze_lead_times(
     artifact = joblib.load(model_path)
     model = artifact["model"]
     feature_cols = artifact.get("feature_columns", FEATURE_COLUMNS)
+    target_type = artifact.get("target_type", "binary")
     noaa_by_location = load_noaa_precip(noaa_dir)
 
     results: dict[str, object] = {}
-    f1_by_lead: dict[int, float] = {}
+    score_by_lead: dict[int, float] = {}
 
     for lead in lead_days:
         parts: list[pd.DataFrame] = []
@@ -51,10 +52,20 @@ def analyze_lead_times(
             xdf = _add_features_per_site(sdf, precip_df=precip_df)
 
             threshold = float(np.nanpercentile(xdf["discharge"].to_numpy(dtype=float), 90.0))
+            threshold_medium = float(np.nanpercentile(xdf["discharge"].to_numpy(dtype=float), 75.0))
+            threshold_high = float(np.nanpercentile(xdf["discharge"].to_numpy(dtype=float), 90.0))
             xdf["threshold"] = threshold
             xdf["discharge_future"] = xdf["discharge"].shift(-lead)
             has_future = xdf["discharge_future"].notna()
-            xdf["target"] = np.where(has_future, (xdf["discharge_future"] > threshold).astype(int), np.nan)
+            if target_type == "multiclass":
+                cls = np.where(
+                    xdf["discharge_future"] > threshold_high,
+                    2,
+                    np.where(xdf["discharge_future"] > threshold_medium, 1, 0),
+                )
+                xdf["target"] = np.where(has_future, cls, np.nan)
+            else:
+                xdf["target"] = np.where(has_future, (xdf["discharge_future"] > threshold).astype(int), np.nan)
             xdf["site_id"] = site_id
             parts.append(xdf)
 
@@ -66,17 +77,22 @@ def analyze_lead_times(
         X_test = split.X_test[list(feature_cols)]
         y_test = split.y_test.astype(int)
         y_pred = model.predict(X_test)
-        m = _metrics(y_test, y_pred)
+        if target_type == "multiclass":
+            m = _multiclass_metrics(y_test, y_pred)
+            score_by_lead[lead] = float(m["macro_f1"])
+        else:
+            m = _metrics(y_test, y_pred)
+            score_by_lead[lead] = float(m["f1"])
         results[f"lead_day_{lead}"] = m
-        f1_by_lead[lead] = m["f1"]
         print(f"lead_day_{lead}: {json.dumps(m)}")
 
-    if 1 in f1_by_lead and 7 in f1_by_lead:
-        summary = f"F1 degrades from {f1_by_lead[1]:.4f} at 1-day to {f1_by_lead[7]:.4f} at 7-day forecast horizon"
+    metric_label = "macro-F1" if target_type == "multiclass" else "F1"
+    if 1 in score_by_lead and 7 in score_by_lead:
+        summary = f"{metric_label} changes from {score_by_lead[1]:.4f} at 1-day to {score_by_lead[7]:.4f} at 7-day forecast horizon"
     else:
         first = lead_days[0]
         last = lead_days[-1]
-        summary = f"F1 changes from {f1_by_lead[first]:.4f} at {first}-day to {f1_by_lead[last]:.4f} at {last}-day forecast horizon"
+        summary = f"{metric_label} changes from {score_by_lead[first]:.4f} at {first}-day to {score_by_lead[last]:.4f} at {last}-day forecast horizon"
     results["summary"] = summary
     print(summary)
 

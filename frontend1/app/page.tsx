@@ -7,15 +7,18 @@ import { PredictionCard } from "@/components/flood/PredictionCard"
 import type { FeatureField } from "@/components/flood/SevenDayInputs"
 import { ResultPanel } from "@/components/flood/ResultPanel"
 import { DischargeChart } from "@/components/flood/DischargeChart"
+import { AnalyticsDashboard } from "@/components/flood/AnalyticsDashboard"
 import { STATIONS, type Station } from "@/lib/constants"
 import {
   checkApiStatus,
+  getApiHealth,
   getLatestData,
   getPrediction,
   getStagePrediction,
   type PredictionResponse,
   type StagePredictionResponse,
   type ApiError,
+  type ApiHealthResponse,
 } from "@/lib/api"
 
 function nan7(): number[] {
@@ -45,6 +48,7 @@ function formatAutofillLabel(dates: string[]): string {
 
 export default function Dashboard() {
   const [apiStatus, setApiStatus] = useState<boolean | null>(null)
+  const [apiHealth, setApiHealth] = useState<ApiHealthResponse | null>(null)
   const [selectedStation, setSelectedStation] = useState<Station>(STATIONS[0])
   const [dischargeSeries, setDischargeSeries] = useState<number[]>(nan7)
   const [prcpSeries, setPrcpSeries] = useState<number[]>(nan7)
@@ -89,6 +93,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     checkApiStatus().then(setApiStatus)
+    getApiHealth().then(setApiHealth)
   }, [])
 
   const handleSeriesCellChange = useCallback(
@@ -211,6 +216,8 @@ export default function Dashboard() {
       } else {
         setStageResult(null)
       }
+      const latestHealth = await getApiHealth()
+      if (latestHealth) setApiHealth(latestHealth)
     } catch (err) {
       const apiError = err as ApiError
       setError(apiError.message)
@@ -258,6 +265,13 @@ export default function Dashboard() {
             stageResult={stageResult}
             dischargeValues={chartDischargeValues}
             station={selectedStation}
+          />
+
+          <AnalyticsDashboard
+            result={result}
+            stageResult={stageResult}
+            dischargeValues={chartDischargeValues}
+            apiHealth={apiHealth}
           />
 
           <DischargeChart values={chartDischargeValues} />

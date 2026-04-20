@@ -51,9 +51,16 @@ def train_stage_model(
         "target_name": "stage_next_day",
     }
 
-    model_out_path = Path(model_out_path)
+    model_out_path = Path(str(model_out_path).strip().strip('"').strip("'"))
     model_out_path.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(artifact, model_out_path)
+    try:
+        joblib.dump(artifact, model_out_path)
+    except OSError:
+        # Windows path oddities can occasionally fail with Errno 22; retry with resolved absolute path.
+        resolved = model_out_path.resolve()
+        resolved.parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump(artifact, resolved)
+        model_out_path = resolved
     return model_out_path
 
 
