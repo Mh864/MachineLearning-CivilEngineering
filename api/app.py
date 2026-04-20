@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import json
 from pathlib import Path
 from typing import Any, Optional
 
@@ -27,6 +28,7 @@ _API_START_TIME = time.time()
 
 USGS_RAW_DIR = Path("data/raw/usgs")
 NOAA_DIR = Path("data/raw/noaa")
+LAST_REFRESH_STATUS_PATH = Path("results/ops/last_refresh_status.json")
 
 # Lazy cache: all `usgs_dv_daily*.csv` files merged (deduped by site + date).
 _usgs_merged_df: pd.DataFrame | None = None
@@ -156,6 +158,11 @@ def health() -> dict:
         cal = _artifact.get("calibration")
         if cal:
             out["calibration"] = cal
+    if LAST_REFRESH_STATUS_PATH.exists():
+        try:
+            out["last_refresh"] = json.loads(LAST_REFRESH_STATUS_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            out["last_refresh"] = {"status": "unknown", "reason": "Could not parse refresh status file."}
     return out
 
 

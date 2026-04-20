@@ -1,0 +1,24 @@
+{
+  "recent_window_days": 30,
+  "reference_window_days": 180,
+  "missingness_alert_increase_pp": 10.0,
+  "psi_alert_threshold": 0.2,
+  "feature_drift_columns": [
+    "discharge_lag1",
+    "discharge_roll_mean_7",
+    "prcp_roll_sum_7",
+    "month"
+  ],
+  "missingness_columns": [
+    "discharge",
+    "stage",
+    "prcp",
+    "tmax",
+    "tmin",
+    "awnd",
+    "snow",
+    "snow_depth"
+  ],
+  "performance_drop_f1_threshold": 0.1,
+  "performance_brier_increase_threshold": 0.02
+}
