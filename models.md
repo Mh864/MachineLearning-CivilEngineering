@@ -1,6 +1,6 @@
 # Models Guide
 
-Supervised **binary classifiers** for **next-day** high-flow exceedance (per-site discharge threshold). **No random split:** training uses a **chronological** cut on the stacked multi-site table (`modeling/utils.py::time_based_split`, default `0.70 / 0.15 / 0.15`).
+Supervised classifiers for **next-day flood risk classes** (multiclass default) with compatibility binary mode. **No random split:** training uses a chronological cut on the stacked multi-site table (`modeling/utils.py::time_based_split`, default `0.70 / 0.15 / 0.15`).
 
 ## 1) Official logistic baseline (Pipeline)
 
@@ -11,15 +11,15 @@ Supervised **binary classifiers** for **next-day** high-flow exceedance (per-sit
 
 ### How it is trained
 
-1. Load `data/processed/features.csv` with the same columns as `FEATURE_COLUMNS` + `site_id`, `date`, `target`.
+1. Load `data/processed/features.csv` with `FEATURE_COLUMNS` + `site_id`, `date`, and selected target column (`target` or `target_multiclass`).
 2. Drop rows with missing features or target.
 3. `time_based_split(..., train_frac=0.70, val_frac=0.15)`.
-4. Fit:
+4. Fit logistic baseline:
 
 ```text
 Pipeline([
   ("scaler", StandardScaler()),
-  ("clf", LogisticRegression(max_iter=5000, class_weight="balanced")),
+  ("clf", LogisticRegression(max_iter=5000, class_weight="balanced", ...)),
 ])
 ```
 
@@ -29,9 +29,13 @@ Standardization is **required** so the linear model converges stably with mixed-
 
 ```python
 {
-  "model": fitted_pipeline,  # predict / predict_proba delegate to the Pipeline
+  "model": fitted_pipeline,
   "feature_columns": FEATURE_COLUMNS,
-  "model_name": "logistic_baseline",
+  "model_name": "...",
+  "target_column": "target" | "target_multiclass",
+  "target_type": "binary" | "multiclass",
+  "class_labels": [...],
+  "best_threshold": <float | null>  # binary only
 }
 ```
 
@@ -53,6 +57,9 @@ Writes `results/logistic_coefficients.json`: standardized coefficients sorted by
 ### Config (fixed, reproducible)
 
 - `n_estimators=300`, `learning_rate=0.05`, `num_leaves=31`, `class_weight="balanced"`, `random_state=42`, `n_jobs=-1`
+- objective:
+  - binary mode: `objective="binary"`
+  - multiclass mode: `objective="multiclass", num_class=3`
 
 ### Interpretability
 
@@ -111,11 +118,14 @@ On this snapshot the **baseline slightly exceeds LightGBM on test F1**; LightGBM
 
 ## 8) Metrics definitions
 
-- **Accuracy:** fraction of correct labels (can be high when negatives dominate).
-- **Precision / recall / F1:** standard binary definitions (`f1` uses `zero_division=0`).
-- **ROC-AUC:** ranking quality from `predict_proba` on the test set (when available).
+- **Multiclass:** accuracy, macro precision, macro recall, macro F1, confusion matrix.
+- **Binary:** precision, recall, F1, ROC-AUC, Brier score.
 
-## 9) Where models are used
+## 9) Binary threshold optimization
+
+For binary artifacts only, the classifier threshold is optimized on the validation slice (`0.05...0.95` search) to maximize F1 (or recall when selected), then stored as `best_threshold` in the artifact. Inference uses this threshold when available.
+
+## 10) Where models are used
 
 - `modeling/evaluate.py` — validation/test metrics
 - `api/predict.py` + `api/app.py` — online inference (`GET /predict`)

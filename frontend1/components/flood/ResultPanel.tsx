@@ -11,8 +11,10 @@ import {
 } from "@/lib/constants"
 import {
   formatModelProbabilityDisplay,
+  getHighRiskProbability,
   getTrend,
   type PredictionResponse,
+  type StagePredictionResponse,
 } from "@/lib/api"
 import {
   TrendingUp,
@@ -27,11 +29,12 @@ import { cn } from "@/lib/utils"
 
 interface ResultPanelProps {
   result: PredictionResponse | null
+  stageResult: StagePredictionResponse | null
   dischargeValues: number[]
   station: Station
 }
 
-export function ResultPanel({ result, dischargeValues, station }: ResultPanelProps) {
+export function ResultPanel({ result, stageResult, dischargeValues, station }: ResultPanelProps) {
   if (!result) {
     return (
       <Card className="h-fit">
@@ -55,7 +58,16 @@ export function ResultPanel({ result, dischargeValues, station }: ResultPanelPro
     )
   }
 
-  const riskLevel = getRiskLevel(result.probability)
+  const riskSignal = typeof result.probability === "number" ? result.probability : getHighRiskProbability(result.probability)
+  const predictionClass = result.prediction
+  const riskLevel =
+    typeof result.probability === "number"
+      ? getRiskLevel(riskSignal)
+      : predictionClass === 2
+        ? "high"
+        : predictionClass === 1
+          ? "medium"
+          : "low"
   const riskConfig = getRiskConfig(riskLevel)
   const trend = getTrend(dischargeValues)
   const { barValue, headline: probabilityHeadline } =
@@ -74,13 +86,13 @@ export function ResultPanel({ result, dischargeValues, station }: ResultPanelPro
   function trendNarrative(): { text: string; color: string } {
     const base = trendIconConfig[trend]
     if (trend === "rising") {
-      if (riskLevel === "low" && result.prediction === 0) {
+      if (riskLevel === "low" && predictionClass === 0) {
         return {
           text: "Discharge is rising over the last few days, but the model still estimates a low chance of exceeding the high-flow threshold tomorrow.",
           color: "text-muted-foreground",
         }
       }
-      if (riskLevel === "high" || result.prediction === 1) {
+      if (riskLevel === "high" || predictionClass >= 1) {
         return {
           text: "Discharge is rising and the model indicates elevated flood risk for tomorrow.",
           color: "text-amber-600",
@@ -143,7 +155,7 @@ export function ResultPanel({ result, dischargeValues, station }: ResultPanelPro
               {probabilityHeadline}
             </span>
             <p className="text-sm text-muted-foreground mt-1">
-              flood probability tomorrow
+              {typeof result.probability === "number" ? "flood probability tomorrow" : "selected risk-class probability"}
             </p>
           </div>
 
@@ -198,6 +210,11 @@ export function ResultPanel({ result, dischargeValues, station }: ResultPanelPro
         <p className="text-xs text-center text-muted-foreground pt-2 border-t">
           Powered by LightGBM · 10 US stations
         </p>
+        {stageResult && (
+          <p className="text-xs text-center text-muted-foreground">
+            Next-day stage estimate: {stageResult.predicted_stage_next_day.toFixed(2)} {stageResult.units}
+          </p>
+        )}
       </CardContent>
     </Card>
   )

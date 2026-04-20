@@ -26,8 +26,13 @@ FEATURE_COLUMNS = [
     "discharge_lag3",
     "discharge_roll_mean_3",
     "discharge_roll_mean_7",
+    "discharge_roll_std_3",
+    "discharge_roll_std_7",
+    "discharge_roll_max_3",
+    "discharge_roll_max_7",
     "discharge_diff_1",
-    "month",
+    "month_sin",
+    "month_cos",
     "prcp_lag1",
     "prcp_lag2",
     "prcp_lag3",
@@ -36,6 +41,7 @@ FEATURE_COLUMNS = [
     "prcp_roll_mean_3",
     "prcp_roll_mean_7",
     "heavy_rain_flag_1d",
+    "days_since_last_heavy_rain",
     "tmax",
     "tmin",
     "tavg",
@@ -213,9 +219,15 @@ def _add_features_per_site(
 
     sdf["discharge_roll_mean_3"] = sdf["discharge"].rolling(window=3, min_periods=3).mean()
     sdf["discharge_roll_mean_7"] = sdf["discharge"].rolling(window=7, min_periods=7).mean()
+    sdf["discharge_roll_std_3"] = sdf["discharge"].rolling(window=3, min_periods=3).std()
+    sdf["discharge_roll_std_7"] = sdf["discharge"].rolling(window=7, min_periods=7).std()
+    sdf["discharge_roll_max_3"] = sdf["discharge"].rolling(window=3, min_periods=3).max()
+    sdf["discharge_roll_max_7"] = sdf["discharge"].rolling(window=7, min_periods=7).max()
 
     sdf["discharge_diff_1"] = sdf["discharge"] - sdf["discharge_lag1"]
-    sdf["month"] = sdf["date"].dt.month.astype(int)
+    month = sdf["date"].dt.month.astype(int)
+    sdf["month_sin"] = np.sin(2.0 * np.pi * month / 12.0)
+    sdf["month_cos"] = np.cos(2.0 * np.pi * month / 12.0)
 
     sdf["prcp_lag1"] = sdf["prcp"].shift(1)
     sdf["prcp_lag2"] = sdf["prcp"].shift(2)
@@ -225,6 +237,18 @@ def _add_features_per_site(
     sdf["prcp_roll_mean_3"] = sdf["prcp"].rolling(3, min_periods=1).mean()
     sdf["prcp_roll_mean_7"] = sdf["prcp"].rolling(7, min_periods=1).mean()
     sdf["heavy_rain_flag_1d"] = (sdf["prcp"] > float(heavy_rain_threshold)).astype(int)
+    last_heavy_idx = pd.Series(
+        np.where(
+            sdf["prcp"].to_numpy(dtype=float) > float(heavy_rain_threshold),
+            np.arange(len(sdf)),
+            np.nan,
+        )
+    ).ffill()
+    sdf["days_since_last_heavy_rain"] = np.where(
+        last_heavy_idx.notna(),
+        np.arange(len(sdf)) - last_heavy_idx.to_numpy(dtype=float),
+        np.arange(len(sdf)),
+    )
 
     sdf["tavg"] = (sdf["tmax"] + sdf["tmin"]) / 2.0
     sdf["temp_range"] = sdf["tmax"] - sdf["tmin"]
@@ -238,11 +262,21 @@ def _add_target_per_site(sdf: pd.DataFrame, *, percentile: float = 0.9) -> pd.Da
     sdf = sdf.sort_values("date").copy()
 
     threshold = float(np.nanpercentile(sdf["discharge"].to_numpy(dtype=float), percentile * 100))
+    threshold_medium = float(np.nanpercentile(sdf["discharge"].to_numpy(dtype=float), 75.0))
+    threshold_high = float(np.nanpercentile(sdf["discharge"].to_numpy(dtype=float), 90.0))
     sdf["threshold"] = threshold
+    sdf["threshold_medium"] = threshold_medium
+    sdf["threshold_high"] = threshold_high
 
     sdf["discharge_next_day"] = sdf["discharge"].shift(-1)
     has_next = sdf["discharge_next_day"].notna()
     sdf["target"] = np.where(has_next, (sdf["discharge_next_day"] > threshold).astype(int), np.nan)
+    target_multiclass = np.where(
+        sdf["discharge_next_day"] > threshold_high,
+        2,
+        np.where(sdf["discharge_next_day"] > threshold_medium, 1, 0),
+    )
+    sdf["target_multiclass"] = np.where(has_next, target_multiclass, np.nan)
     return sdf
 
 
@@ -281,9 +315,19 @@ def build_features_dataset(
     out = pd.concat(parts, ignore_index=True) if parts else df.iloc[0:0].copy()
 
     # Drop rows with NaNs introduced by lags/rolling/shift
-    out = out.dropna(subset=FEATURE_COLUMNS + ["target"])
+    out = out.dropna(subset=FEATURE_COLUMNS + ["target", "target_multiclass"])
 
-    out_cols = ["site_id", "date"] + FEATURE_COLUMNS + ["threshold", "discharge_next_day", "target"]
+    out_cols = [
+        "site_id",
+        "date",
+        *FEATURE_COLUMNS,
+        "threshold",
+        "threshold_medium",
+        "threshold_high",
+        "discharge_next_day",
+        "target",
+        "target_multiclass",
+    ]
     out = out[out_cols].sort_values(["site_id", "date"]).reset_index(drop=True)
 
     out_path = Path(out_path)
@@ -294,11 +338,18 @@ def build_features_dataset(
         "prcp_lag1",
         "prcp_lag2",
         "prcp_lag3",
+        "discharge_roll_std_3",
+        "discharge_roll_std_7",
+        "discharge_roll_max_3",
+        "discharge_roll_max_7",
+        "month_sin",
+        "month_cos",
         "prcp_roll_sum_3",
         "prcp_roll_sum_7",
         "prcp_roll_mean_3",
         "prcp_roll_mean_7",
         "heavy_rain_flag_1d",
+        "days_since_last_heavy_rain",
         "tmax",
         "tmin",
         "tavg",

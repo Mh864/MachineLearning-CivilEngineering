@@ -32,6 +32,12 @@ def main() -> int:
     p.add_argument("--start-date", type=str, default="2018-01-01")
     p.add_argument("--end-date", type=str, default="2024-12-31")
     p.add_argument("--model-type", choices=["baseline", "lightgbm", "both"], default="both")
+    p.add_argument("--target-column", choices=["target", "target_multiclass"], default="target_multiclass")
+    p.add_argument(
+        "--with-stage",
+        action="store_true",
+        help="Also build/train/evaluate next-day river stage regression track.",
+    )
     p.add_argument(
         "--no-calibration",
         action="store_true",
@@ -81,6 +87,7 @@ def main() -> int:
             "--features-path", "data/processed/features.csv",
             "--model-out", "models/model.pkl",
             "--model-type", "baseline",
+            "--target-column", args.target_column,
         ]
         if args.no_calibration:
             train_baseline.append("--no-calibration")
@@ -100,6 +107,7 @@ def main() -> int:
             "--features-path", "data/processed/features.csv",
             "--model-out", "models/lgbm_model.pkl",
             "--model-type", "lightgbm",
+            "--target-column", args.target_column,
         ]
         if args.no_calibration:
             train_lgbm.append("--no-calibration")
@@ -160,6 +168,26 @@ def main() -> int:
             "--out-path", "results/lead_time_analysis.json",
         ], "Step 7: Lead-time analysis (1, 2, 3, 5, 7 days)")
 
+    if args.with_stage:
+        run([
+            "-m", "modeling.stage_features",
+            "--clean-path", "data/processed/clean_data.csv",
+            "--out-path", "data/processed/stage_features.csv",
+            "--noaa-dir", "data/raw/noaa",
+        ], "Step 8a: Build stage regression features")
+        run([
+            "-m", "modeling.stage_train",
+            "--features-path", "data/processed/stage_features.csv",
+            "--model-out", "models/stage_model.pkl",
+            "--model-type", "strong",
+        ], "Step 8b: Train stage regression model")
+        run([
+            "-m", "modeling.stage_evaluate",
+            "--features-path", "data/processed/stage_features.csv",
+            "--model-path", "models/stage_model.pkl",
+            "--out-path", "results/stage_metrics.json",
+        ], "Step 8c: Evaluate stage regression model")
+
     print("\n" + "=" * 60)
     print("  Pipeline complete. Results saved in results/")
     print("=" * 60)
@@ -172,6 +200,10 @@ def main() -> int:
     print("  results/logistic_coefficients.json  — Standardized LR coefficients")
     print("  results/lgbm_feature_importance.json — LightGBM gain importances")
     print("  results/forward_window_stability.json — Test-period window metrics (LGBM)")
+    if args.with_stage:
+        print("  data/processed/stage_features.csv     — Stage regression feature matrix")
+        print("  models/stage_model.pkl               — Stage regression artifact")
+        print("  results/stage_metrics.json           — Stage regression metrics")
     return 0
 
 

@@ -1,0 +1,34 @@
+{
+  "status": "success",
+  "started_at_utc": "2026-04-20T13:34:56.797276+00:00",
+  "finished_at_utc": "2026-04-20T13:35:56.151436+00:00",
+  "duration_seconds": 59.35,
+  "command": [
+    "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+    "run_pipeline.py",
+    "--start-date",
+    "2018-01-01",
+    "--end-date",
+    "2024-12-31",
+    "--model-type",
+    "both"
+  ],
+  "log_path": "results\\ops\\logs\\refresh_20260420T133456Z.log",
+  "args": {
+    "start_date": "2018-01-01",
+    "end_date": "2024-12-31",
+    "model_type": "both",
+    "skip_fetch": false,
+    "no_calibration": false
+  },
+  "model_backups": [
+    {
+      "model": "model.pkl",
+      "backup_path": "results\\ops\\model_backups\\20260420T133456Z_model.pkl"
+    },
+    {
+      "model": "lgbm_model.pkl",
+      "backup_path": "results\\ops\\model_backups\\20260420T133456Z_lgbm_model.pkl"
+    }
+  ]
+}

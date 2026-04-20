@@ -9,7 +9,9 @@ import pandas as pd
 from sklearn.metrics import (
     accuracy_score,
     brier_score_loss,
+    confusion_matrix,
     f1_score,
+    precision_recall_fscore_support,
     precision_score,
     recall_score,
     roc_auc_score,
@@ -25,6 +27,19 @@ def _metrics(y_true, y_pred) -> dict[str, float]:
         "precision": float(precision_score(y_true, y_pred, zero_division=0)),
         "recall": float(recall_score(y_true, y_pred, zero_division=0)),
         "f1": float(f1_score(y_true, y_pred, zero_division=0)),
+    }
+
+
+def _multiclass_metrics(y_true, y_pred) -> dict[str, object]:
+    macro_p, macro_r, macro_f1, _ = precision_recall_fscore_support(
+        y_true, y_pred, average="macro", zero_division=0
+    )
+    return {
+        "accuracy": float(accuracy_score(y_true, y_pred)),
+        "macro_precision": float(macro_p),
+        "macro_recall": float(macro_r),
+        "macro_f1": float(macro_f1),
+        "confusion_matrix": confusion_matrix(y_true, y_pred, labels=[0, 1, 2]).tolist(),
     }
 
 
@@ -87,31 +102,62 @@ def evaluate_model(
     artifact = joblib.load(model_path)
     model = artifact["model"]
     feature_cols = artifact.get("feature_columns", FEATURE_COLUMNS)
+    target_col = artifact.get("target_column", "target")
+    target_type = artifact.get("target_type", "binary")
+    best_threshold = artifact.get("best_threshold")
 
     df = pd.read_csv(features_path, dtype={"site_id": "string"})
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
-    df["target"] = pd.to_numeric(df["target"], errors="coerce")
-    df = df.dropna(subset=["date", "target"]).sort_values(["site_id", "date"]).reset_index(drop=True)
-    df = df[["site_id", "date"] + list(feature_cols) + ["target"]].dropna()
+    df[target_col] = pd.to_numeric(df[target_col], errors="coerce")
+    df = df.dropna(subset=["date", target_col]).sort_values(["site_id", "date"]).reset_index(drop=True)
+    df = df[["site_id", "date"] + list(feature_cols) + [target_col]].dropna()
 
-    split = time_based_split(df, time_col="date", target_col="target", train_frac=0.70, val_frac=0.15)
+    split = time_based_split(df, time_col="date", target_col=target_col, train_frac=0.70, val_frac=0.15)
 
-    def predict(X: pd.DataFrame):
-        return model.predict(X[list(feature_cols)])
+    def predict_binary(X: pd.DataFrame):
+        if hasattr(model, "predict_proba") and best_threshold is not None:
+            p = model.predict_proba(X[list(feature_cols)])[:, 1]
+            return (p >= float(best_threshold)).astype(int), p
+        yp = model.predict(X[list(feature_cols)]).astype(int)
+        p = None
+        if hasattr(model, "predict_proba"):
+            p = model.predict_proba(X[list(feature_cols)])[:, 1]
+        return yp, p
 
     y_val_true = split.y_val.astype(int)
     y_test_true = split.y_test.astype(int)
-    y_val_pred = predict(split.X_val)
-    y_test_pred = predict(split.X_test)
 
-    metrics = {
-        "validation": _metrics(y_val_true, y_val_pred),
-        "test": _metrics(y_test_true, y_test_pred),
-        "n_rows": int(len(df)),
-        "n_train": int(len(split.X_train)),
-        "n_val": int(len(split.X_val)),
-        "n_test": int(len(split.X_test)),
-    }
+    if target_type == "multiclass":
+        y_val_pred = model.predict(split.X_val[list(feature_cols)]).astype(int)
+        y_test_pred = model.predict(split.X_test[list(feature_cols)]).astype(int)
+        metrics = {
+            "target_type": "multiclass",
+            "validation": _multiclass_metrics(y_val_true, y_val_pred),
+            "test": _multiclass_metrics(y_test_true, y_test_pred),
+            "n_rows": int(len(df)),
+            "n_train": int(len(split.X_train)),
+            "n_val": int(len(split.X_val)),
+            "n_test": int(len(split.X_test)),
+        }
+    else:
+        y_val_pred, y_val_proba = predict_binary(split.X_val)
+        y_test_pred, y_test_proba = predict_binary(split.X_test)
+        metrics = {
+            "target_type": "binary",
+            "best_threshold": best_threshold,
+            "validation": _metrics(y_val_true, y_val_pred),
+            "test": _metrics(y_test_true, y_test_pred),
+            "n_rows": int(len(df)),
+            "n_train": int(len(split.X_train)),
+            "n_val": int(len(split.X_val)),
+            "n_test": int(len(split.X_test)),
+        }
+        if y_test_proba is not None:
+            try:
+                metrics["test_roc_auc"] = float(roc_auc_score(y_test_true, y_test_proba))
+            except Exception:
+                metrics["test_roc_auc"] = None
+            metrics["test_brier"] = _brier_score_loss_binary(y_test_true, y_test_proba)
 
     print("Validation metrics:", json.dumps(metrics["validation"], indent=2))
     print("Test metrics:", json.dumps(metrics["test"], indent=2))
@@ -130,14 +176,6 @@ def compare_models(
 ) -> Path:
     df = pd.read_csv(features_path, dtype={"site_id": "string"})
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
-    df["target"] = pd.to_numeric(df["target"], errors="coerce")
-    df = df.dropna(subset=["date", "target"]).sort_values(["site_id", "date"]).reset_index(drop=True)
-    # Same row set as training / single-model evaluate (chronological split on complete feature rows)
-    df = df[["site_id", "date"] + list(FEATURE_COLUMNS) + ["target"]].dropna()
-
-    split = time_based_split(df, time_col="date", target_col="target", train_frac=0.70, val_frac=0.15)
-    y_val_true = split.y_val.astype(int)
-    y_test_true = split.y_test.astype(int)
 
     results: dict[str, dict[str, object]] = {}
     best_f1_name: str | None = None
@@ -150,23 +188,59 @@ def compare_models(
         artifact = joblib.load(model_path)
         model = artifact["model"]
         feature_cols = artifact.get("feature_columns", FEATURE_COLUMNS)
+        target_col = artifact.get("target_column", "target")
+        target_type = artifact.get("target_type", "binary")
+        best_threshold = artifact.get("best_threshold")
         model_name = str(artifact.get("model_name", Path(model_path).stem))
+
+        local = df.copy()
+        local[target_col] = pd.to_numeric(local[target_col], errors="coerce")
+        local = local.dropna(subset=[target_col]).sort_values(["site_id", "date"]).reset_index(drop=True)
+        local = local[["site_id", "date"] + list(feature_cols) + [target_col]].dropna()
+        split = time_based_split(local, time_col="date", target_col=target_col, train_frac=0.70, val_frac=0.15)
+        y_val_true = split.y_val.astype(int)
+        y_test_true = split.y_test.astype(int)
 
         X_val = split.X_val[list(feature_cols)].dropna()
         y_val = y_val_true.loc[X_val.index]
         X_test = split.X_test[list(feature_cols)].dropna()
         y_test = y_test_true.loc[X_test.index]
 
-        y_val_pred = model.predict(X_val)
-        y_test_pred = model.predict(X_test)
+        if target_type == "multiclass":
+            y_val_pred = model.predict(X_val).astype(int)
+            y_test_pred = model.predict(X_test).astype(int)
+            val_metrics = _multiclass_metrics(y_val, y_val_pred)
+            test_metrics = _multiclass_metrics(y_test, y_test_pred)
+            results[model_name] = {
+                "target_type": "multiclass",
+                "validation": val_metrics,
+                "test": test_metrics,
+            }
+            rows.append((model_name, val_metrics["macro_f1"], test_metrics["macro_f1"], None, None))
+            if float(test_metrics["macro_f1"]) > best_f1_val:
+                best_f1_val = float(test_metrics["macro_f1"])
+                best_f1_name = model_name
+            continue
+
+        if hasattr(model, "predict_proba"):
+            y_val_proba = model.predict_proba(X_val)[:, 1]
+            y_test_proba = model.predict_proba(X_test)[:, 1]
+        else:
+            y_val_proba = None
+            y_test_proba = None
+        if y_val_proba is not None and best_threshold is not None:
+            y_val_pred = (y_val_proba >= float(best_threshold)).astype(int)
+            y_test_pred = (y_test_proba >= float(best_threshold)).astype(int) if y_test_proba is not None else model.predict(X_test)
+        else:
+            y_val_pred = model.predict(X_val)
+            y_test_pred = model.predict(X_test)
         val_metrics = _metrics(y_val, y_val_pred)
         test_metrics = _metrics(y_test, y_test_pred)
 
         test_roc_auc: float | None = None
         test_brier: float | None = None
         try:
-            if hasattr(model, "predict_proba"):
-                y_test_proba = model.predict_proba(X_test)[:, 1]
+            if y_test_proba is not None:
                 test_roc_auc = float(roc_auc_score(y_test, y_test_proba))
                 test_brier = _brier_score_loss_binary(y_test, y_test_proba)
         except Exception:
@@ -181,6 +255,8 @@ def compare_models(
         )
 
         results[model_name] = {
+            "target_type": "binary",
+            "best_threshold": best_threshold,
             "validation": val_metrics,
             "test": test_metrics,
             "test_roc_auc": test_roc_auc,
@@ -200,9 +276,6 @@ def compare_models(
         "best_model_by_test_f1": best_f1_name,
         "best_model_by_test_roc_auc": best_auc_name,
         "n_rows": int(len(df)),
-        "n_train": int(len(split.X_train)),
-        "n_val": int(len(split.X_val)),
-        "n_test": int(len(split.X_test)),
     }
 
     print(f"{'Model':<20} {'Val F1':>10} {'Test F1':>10} {'Test ROC-AUC':>14} {'Test Brier':>12}")

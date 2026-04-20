@@ -55,8 +55,14 @@ def _build_feature_frame(
     discharge_lag3 = float(x[-4])
     discharge_roll_mean_3 = float(np.mean(x[-3:]))
     discharge_roll_mean_7 = float(np.mean(x[-7:]))
+    discharge_roll_std_3 = float(np.std(x[-3:], ddof=1))
+    discharge_roll_std_7 = float(np.std(x[-7:], ddof=1))
+    discharge_roll_max_3 = float(np.max(x[-3:]))
+    discharge_roll_max_7 = float(np.max(x[-7:]))
     discharge_diff_1 = float(x[-1] - x[-2])
     month = int(date.month)
+    month_sin = float(np.sin(2.0 * np.pi * month / 12.0))
+    month_cos = float(np.cos(2.0 * np.pi * month / 12.0))
 
     p = _tail7(recent_prcp)
 
@@ -72,6 +78,11 @@ def _build_feature_frame(
     thr = 20.0 if heavy_rain_threshold is None else float(heavy_rain_threshold)
     # heavy_rain_flag_1d uses same-day prcp at D
     heavy_rain_flag_1d = 1.0 if float(p[-1]) > thr else 0.0
+    heavy_idxs = np.where(p > thr)[0]
+    if len(heavy_idxs) == 0:
+        days_since_last_heavy_rain = float(len(p))
+    else:
+        days_since_last_heavy_rain = float((len(p) - 1) - int(heavy_idxs[-1]))
 
     tmax = _last_scalar(recent_tmax)
     tmin = _last_scalar(recent_tmin)
@@ -95,8 +106,14 @@ def _build_feature_frame(
         "discharge_lag3": discharge_lag3,
         "discharge_roll_mean_3": discharge_roll_mean_3,
         "discharge_roll_mean_7": discharge_roll_mean_7,
+        "discharge_roll_std_3": discharge_roll_std_3,
+        "discharge_roll_std_7": discharge_roll_std_7,
+        "discharge_roll_max_3": discharge_roll_max_3,
+        "discharge_roll_max_7": discharge_roll_max_7,
         "discharge_diff_1": discharge_diff_1,
         "month": month,
+        "month_sin": month_sin,
+        "month_cos": month_cos,
         "precip_mm_lag1": precip_mm_lag1,
         "precip_mm_roll_3": precip_mm_roll_3,
         "precip_mm_roll_7": precip_mm_roll_7,
@@ -108,6 +125,7 @@ def _build_feature_frame(
         "prcp_roll_mean_3": prcp_roll_mean_3,
         "prcp_roll_mean_7": prcp_roll_mean_7,
         "heavy_rain_flag_1d": heavy_rain_flag_1d,
+        "days_since_last_heavy_rain": days_since_last_heavy_rain,
         "tmax": tmax,
         "tmin": tmin,
         "tavg": tavg,
@@ -135,7 +153,7 @@ def predict_from_recent_discharge(
     recent_snow: list[float] | None = None,
     recent_snow_depth: list[float] | None = None,
     heavy_rain_threshold: float | None = None,
-) -> tuple[int, float]:
+) -> dict[str, Any]:
     model = artifact["model"]
     feature_cols = artifact["feature_columns"]
 
@@ -157,7 +175,28 @@ def predict_from_recent_discharge(
         heavy_rain_threshold=heavy_rain_threshold,
     )
     X = X[feature_cols]
-    pred = int(model.predict(X)[0])
-    # When the artifact is CalibratedClassifierCV, this is validation-calibrated P(class 1).
-    proba = float(model.predict_proba(X)[0][1])
-    return pred, proba
+    target_type = artifact.get("target_type", "binary")
+    best_threshold = artifact.get("best_threshold")
+    proba_vec = model.predict_proba(X)[0] if hasattr(model, "predict_proba") else None
+
+    if target_type == "multiclass":
+        if proba_vec is None:
+            pred = int(model.predict(X)[0])
+            return {"prediction": pred, "probability": {"normal": 0.0, "medium": 0.0, "high": 0.0}}
+        pred = int(np.argmax(proba_vec))
+        return {
+            "prediction": pred,
+            "probability": {
+                "normal": float(proba_vec[0]),
+                "medium": float(proba_vec[1]),
+                "high": float(proba_vec[2]),
+            },
+        }
+
+    if proba_vec is not None:
+        p1 = float(proba_vec[1])
+    else:
+        p1 = float(model.predict(X)[0])
+    threshold = float(best_threshold) if best_threshold is not None else 0.5
+    pred = int(p1 >= threshold)
+    return {"prediction": pred, "probability": p1}

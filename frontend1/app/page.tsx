@@ -12,7 +12,9 @@ import {
   checkApiStatus,
   getLatestData,
   getPrediction,
+  getStagePrediction,
   type PredictionResponse,
+  type StagePredictionResponse,
   type ApiError,
 } from "@/lib/api"
 
@@ -46,6 +48,7 @@ export default function Dashboard() {
   const [selectedStation, setSelectedStation] = useState<Station>(STATIONS[0])
   const [dischargeSeries, setDischargeSeries] = useState<number[]>(nan7)
   const [prcpSeries, setPrcpSeries] = useState<number[]>(nan7)
+  const [stageSeries, setStageSeries] = useState<number[]>(nan7)
   const [tmaxSeries, setTmaxSeries] = useState<number[]>(nan7)
   const [tminSeries, setTminSeries] = useState<number[]>(nan7)
   const [awndSeries, setAwndSeries] = useState<number[]>(nan7)
@@ -60,6 +63,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<PredictionResponse | null>(null)
+  const [stageResult, setStageResult] = useState<StagePredictionResponse | null>(null)
   const [latestLoading, setLatestLoading] = useState(false)
   const [latestError, setLatestError] = useState<string | null>(null)
   const [autofillLabel, setAutofillLabel] = useState<string | null>(null)
@@ -121,6 +125,8 @@ export default function Dashboard() {
         const data = await getLatestData(station.siteId, endDate)
         setDischargeSeries(ensure7(data.discharge, NaN))
         setPrcpSeries(ensure7(data.rainfall_mm, 0))
+        const stageLoaded = (data.stage ?? []).map((v) => (typeof v === "number" ? v : NaN))
+        setStageSeries(ensure7(stageLoaded, NaN))
         setTmaxSeries(ensure7(data.tmax_c, 0))
         setTminSeries(ensure7(data.tmin_c, 0))
         setAwndSeries(ensure7(data.awnd ?? [], 0))
@@ -141,6 +147,7 @@ export default function Dashboard() {
         )
         setDischargeSeries(nan7())
         setPrcpSeries(nan7())
+        setStageSeries(nan7())
         setTmaxSeries(nan7())
         setTminSeries(nan7())
         setAwndSeries(nan7())
@@ -160,6 +167,7 @@ export default function Dashboard() {
   const handleStationChange = (station: Station) => {
     setSelectedStation(station)
     setResult(null)
+    setStageResult(null)
     setError(null)
   }
 
@@ -176,6 +184,7 @@ export default function Dashboard() {
 
     try {
       const prediction = await getPrediction(selectedStation.siteId, d, {
+        recentDischarge: d,
         recentPrcp: optionalFinite7(prcpSeries),
         recentTmax: optionalFinite7(tmaxSeries),
         recentTmin: optionalFinite7(tminSeries),
@@ -185,6 +194,23 @@ export default function Dashboard() {
         asOfDate: seriesAsOfDate ?? undefined,
       })
       setResult(prediction)
+      const s = stageSeries.slice(0, 7)
+      if (s.length === 7 && s.every(Number.isFinite)) {
+        try {
+          const st = await getStagePrediction(selectedStation.siteId, s, {
+            recentDischarge: d,
+            recentPrcp: optionalFinite7(prcpSeries),
+            recentTmax: optionalFinite7(tmaxSeries),
+            recentTmin: optionalFinite7(tminSeries),
+            asOfDate: seriesAsOfDate ?? undefined,
+          })
+          setStageResult(st)
+        } catch {
+          setStageResult(null)
+        }
+      } else {
+        setStageResult(null)
+      }
     } catch (err) {
       const apiError = err as ApiError
       setError(apiError.message)
@@ -229,6 +255,7 @@ export default function Dashboard() {
 
           <ResultPanel
             result={result}
+            stageResult={stageResult}
             dischargeValues={chartDischargeValues}
             station={selectedStation}
           />

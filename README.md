@@ -1,14 +1,18 @@
 # MachineLearning-CivilEngineering
 
-End-to-end flood-risk project for civil engineering workflows: **binary classification** of whether **next-day** river discharge exceeds a **site-specific high-flow threshold** (daily data, multi-site, chronological train/validation/test split, no random split, no leakage). The **official baseline** is **logistic regression** (standardized features); the **strong nonlinear model** is **LightGBM**.
+End-to-end flood-risk project for civil engineering workflows with two prediction tracks:
+- **Multi-class risk classification** for next-day discharge (`normal`, `medium`, `high`).
+- **Optional stage regression** for next-day river stage.
+
+The main classifiers are logistic regression (baseline) and LightGBM (strong model), both trained on chronological splits with no random leakage.
 
 ## What this project does
 
 - Fetches raw daily river data from USGS (discharge and optional stage).
 - Fetches NOAA daily weather data (PRCP/TMAX/TMIN via CDO; optional AWND/SNOW/SNWD when present in files).
 - Cleans and normalizes data into continuous daily time series (`clean_data.csv`).
-- Builds lag/rolling features and a binary next-day target (`features.csv`).
-- Trains `LogisticRegression` inside a `StandardScaler` **Pipeline** (balanced class weights) and `LGBMClassifier` on the **same** feature rows and split.
+- Builds lag/rolling/weather features and both targets (`target` binary + `target_multiclass`) in `features.csv`.
+- Trains `LogisticRegression` (binary or multinomial mode) and `LGBMClassifier` (binary or multiclass objective) on the same feature rows and split.
 - **Calibrates** predicted probabilities on the **validation** slice (isotonic regression if possible, else Platt scaling) so API/UI probabilities are better aligned with observed frequencies; see [Probability calibration](#probability-calibration) below.
 - Evaluates with held-out metrics (including **Brier score** and **per-site test** breakdown in `--compare`), **naive baselines** (persistence + majority), **interpretability** exports, **forward-window** test stability, and **lead-time** analysis.
 - Includes **Step 3 automated parity tests** (`tests/`) so inference feature reconstruction stays aligned with training; see [Feature parity tests (Step 3)](#feature-parity-tests-step-3).
@@ -21,25 +25,25 @@ This README is the **single place** that lists what the project includes and **h
 | Area | What it is |
 |------|------------|
 | **Core ML** | USGS + NOAA → `clean_data.csv` → `features.csv` → train logistic + LightGBM → chronological train/val/test, no leakage. |
-| **Target** | Per gauge: next-day discharge **above** a site-specific high-flow threshold (default **90th percentile** of that site’s history)—not an official “flood” flag from an agency. |
+| **Target** | Per gauge: `target_multiclass` (0 normal `<=p75`, 1 medium `(p75,p90]`, 2 high `>p90`) and compatibility `target` binary (`>p90`). |
 | **Snow** | `snow` and `snow_depth` in `FEATURE_COLUMNS`; NOAA `SNOW`/`SNWD` merged when present; missing filled like other weather (see `features.md`). Retrain after adding these so artifacts match. |
 | **Step 1 — Evaluation** | `modeling.evaluate --compare` writes **`test_brier`**, global metrics, and **`per_site_test`** (per USGS id on the held-out test slice). Console prints a **Test Brier** column. |
 | **Step 2 — Calibration** | After training on **train**, probabilities are calibrated on **validation** (isotonic, else sigmoid). Saved in `models/*.pkl` under **`calibration`**. API `/predict` returns **calibrated** `probability` unless you use `--no-calibration`. |
 | **Step 3 — Parity test** | `tests/test_feature_parity.py` checks **`api/predict._build_feature_frame`** matches **`modeling.features._add_features_per_site`** for the same 7-day window. Uses `merge_weather_into_site_discharge`. |
-| **API** | FastAPI: `/health` (optional **`calibration`** JSON), `/latest`, `/predict`. |
+| **API** | FastAPI: `/health`, `/latest`, `/predict` (binary + multiclass compatible), `/predict-stage`. |
 | **Frontend** | Next.js dashboard (`frontend/` or `frontend1/`): station picker, 7-day inputs, **Predict**; needs API running. |
 
 ## How to verify the work (runbook)
 
 Do these from the **repository root** after `pip install -r requirements.txt` (and `npm install` inside the frontend folder if you use the UI).
 
-1. **Retrain and refresh metrics (sees Step 1 + Step 2 in outputs)**  
+1. **Retrain and refresh metrics (multiclass default)**  
    ```bash
-   python -m modeling.train --features-path data/processed/features.csv --model-out models/model.pkl --model-type baseline
-   python -m modeling.train --features-path data/processed/features.csv --model-out models/lgbm_model.pkl --model-type lightgbm
+   python -m modeling.train --features-path data/processed/features.csv --model-out models/model.pkl --model-type baseline --target-column target_multiclass
+   python -m modeling.train --features-path data/processed/features.csv --model-out models/lgbm_model.pkl --model-type lightgbm --target-column target_multiclass
    python -m modeling.evaluate --compare --model-paths models/model.pkl models/lgbm_model.pkl --out-path results/comparison.json
    ```  
-   **Look for:** `results/comparison.json` — each model has **`test_brier`**, **`per_site_test`** (nested by site id), and validation/test F1. Console table includes **Test Brier**.
+   **Look for:** `results/comparison.json` with `target_type`, validation/test metrics (macro-F1 for multiclass; ROC-AUC/Brier for binary artifacts).
 
 2. **Confirm Step 2 (calibration) on disk**  
    ```bash
@@ -64,7 +68,7 @@ Do these from the **repository root** after `pip install -r requirements.txt` (a
 5. **Frontend**  
    Terminal A: `python run_api.py`  
    Terminal B: `cd frontend1` (or `frontend`) → `npm install` → `npm run dev` → open the URL shown (usually `http://localhost:3000`).  
-   **Look for:** header **API Connected**, load a station, **Predict** shows a probability.
+   **Look for:** header **API Connected**, load a station, **Predict** shows risk probability (multiclass or binary) and optional next-day stage estimate when stage model is available.
 
 **Optional — train without calibration (compare raw vs calibrated behavior):**  
 `python -m modeling.train ... --no-calibration` (same flag on `run_pipeline.py`).
@@ -148,7 +152,9 @@ Options:
 
 - `--skip-fetch` — use existing `data/raw/usgs` files.
 - `--model-type baseline` | `lightgbm` | `both` (default `both`).
+- `--target-column target_multiclass` | `target` (default `target_multiclass`).
 - `--no-calibration` — skip validation-set probability calibration for both models (same flag as `modeling.train`).
+- `--with-stage` — also run next-day river stage regression track (`stage_features` -> `stage_model.pkl` -> `stage_metrics.json`).
 
 Steps include: USGS fetch (unless skipped), **NOAA coverage audit**, clean data, features, training, evaluation, comparison, **naive baselines**, **interpretability JSON**, **forward-window stability** (LightGBM), lead-time analysis.
 
@@ -172,8 +178,8 @@ Add `--warn-only` to always exit 0 (report-only in CI).
 ```bash
 python -m data_processing.clean_data --raw-dir data/raw/usgs --out-path data/processed/clean_data.csv
 python -m modeling.features --clean-path data/processed/clean_data.csv --out-path data/processed/features.csv --noaa-dir data/raw/noaa
-python -m modeling.train --features-path data/processed/features.csv --model-out models/model.pkl --model-type baseline
-python -m modeling.train --features-path data/processed/features.csv --model-out models/lgbm_model.pkl --model-type lightgbm
+python -m modeling.train --features-path data/processed/features.csv --model-out models/model.pkl --model-type baseline --target-column target_multiclass
+python -m modeling.train --features-path data/processed/features.csv --model-out models/lgbm_model.pkl --model-type lightgbm --target-column target_multiclass
 # Optional: train without wrapping the base estimator in probability calibration (raw base probabilities in API)
 # python -m modeling.train ... --no-calibration
 python -m modeling.evaluate --compare --model-paths models/model.pkl models/lgbm_model.pkl --out-path results/comparison.json
@@ -193,6 +199,7 @@ python run_api.py
 
 - Docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 - **GET `/health`** — process uptime, whether a model artifact is loaded, which file (`models/lgbm_model.pkl` preferred over `models/model.pkl`), and when present the **`calibration`** block from the artifact (method and `fit_on: validation`).
+- **GET `/predict-stage`** — optional stage-regression endpoint (requires `models/stage_model.pkl`), predicts next-day river stage from recent stage window.
 
 ## Probability calibration
 
@@ -224,12 +231,12 @@ Run this after any change to feature definitions or inference reconstruction.
 
 ## Model summary (official framing)
 
-- **Task:** binary; **horizon:** 1 day; **sites:** 10 USGS gauges; **split:** chronological `0.70 / 0.15 / 0.15` on the stacked multi-site timeline (see `modeling/utils.py`).
-- **Target:** per site, threshold = historical discharge quantile (default **90th**); `target = 1` if next-day discharge **>** threshold.
-- **Baseline:** `Pipeline(StandardScaler, LogisticRegression(max_iter=5000, class_weight="balanced"))`, then wrapped with validation calibration unless `--no-calibration`.
-- **Strong model:** `LGBMClassifier` (balanced; fixed hyperparameters in `modeling/train.py`), then same calibration step.
+- **Task:** multiclass risk by default (plus optional binary compatibility and stage regression); **horizon:** 1 day; **sites:** 10 USGS gauges.
+- **Targets:** `target_multiclass` with per-site p75/p90 boundaries and compatibility `target` binary (`>p90`).
+- **Baseline:** Logistic Regression pipeline (multinomial for multiclass target).
+- **Strong model:** LightGBM with multiclass objective for multiclass target.
 
-**Metrics:** After retraining, run `python -m modeling.evaluate --compare --model-paths models/model.pkl models/lgbm_model.pkl --out-path results/comparison.json`. That file reports validation/test **F1**, test **ROC-AUC**, test **Brier score** (lower is better for probability quality), and **per-site** test metrics. Numbers depend on `features.csv` and random seeds; do not rely on stale tables in docs.
+**Metrics:** Multiclass runs report accuracy/macro precision/macro recall/macro F1/confusion matrix. Binary runs report precision/recall/F1 + ROC-AUC + Brier and use validation-optimized threshold stored in the artifact.
 
 ## Frontend (`frontend/` or `frontend1/`)
 
@@ -242,7 +249,7 @@ npm install
 npm run dev
 ```
 
-Set **`NEXT_PUBLIC_API_URL`** if the FastAPI backend is not at `http://127.0.0.1:8000` (no trailing slash). Run **`python run_api.py`** in a separate terminal so the UI can reach `/latest` and `/predict`. The **`probability`** shown for predictions matches the **calibrated** `predict_proba` from the saved artifact (unless you trained with `--no-calibration`).
+Set **`NEXT_PUBLIC_API_URL`** if the FastAPI backend is not at `http://127.0.0.1:8000` (no trailing slash). Run **`python run_api.py`** in a separate terminal so the UI can reach `/latest`, `/predict`, and `/predict-stage`.
 
 ## Documentation
 
@@ -252,13 +259,10 @@ Set **`NEXT_PUBLIC_API_URL`** if the FastAPI backend is not at `http://127.0.0.1
 | `features.md` | Feature definitions, merge/join rules, missing-weather handling |
 | `models.md` | Training, metrics, baselines, interpretability, stability analysis |
 | `api.md` | Endpoints, parameters, health check |
+| `STAGE_PREDICTION_GUIDE.md` | Stage regression pipeline steps and `/predict-stage` usage |
 
 ## Project status
 
-**Done:** multi-site ingestion through `features.csv`; chronological evaluation; Pipeline logistic baseline; LightGBM; **validation-set probability calibration** (default); aligned `compare_models` with **Brier** and **per-site test** metrics; **Step 3 pytest feature parity** (`tests/test_feature_parity.py`) + `merge_weather_into_site_discharge`; NOAA verification script; naive baselines; coefficient/importance exports (unwraps calibrated models); forward-window test diagnostics; `/health` (includes optional **calibration** metadata); lead-time script.
+**Done:** multi-site ingestion; multiclass + binary target support; enhanced feature set (volatility, cyclic seasonality, heavy-rain recency); multiclass/binary-compatible training and evaluation; validation threshold optimization for binary; API support for multiclass probabilities and stage prediction; operations refresh + monitoring scripts; frontend integration.
 
 **Future:** production monitoring stack, calibration **visualization** dashboards, broader automated tests (e.g. API smoke tests), hyperparameter search beyond fixed configs.
-
-
-
-Signe de test a amrcher: Si tu vois ce message. Tu as la version la plus recente

@@ -193,11 +193,26 @@ python ops/daily_refresh.py --start-date 2018-01-01 --end-date 2024-12-31 --mode
 python ops/monitoring_report.py
 ```
 
+Single-command wrapper (recommended for clean runs):
+
+```bash
+python run_ops.py --start-date 2018-01-01 --end-date 2024-12-31 --model-type both
+```
+
 Optional refresh flags:
 
 ```bash
 python ops/daily_refresh.py --skip-fetch --model-type both
 python ops/daily_refresh.py --model-type lightgbm --no-calibration
+```
+
+Wrapper flags:
+
+```bash
+python run_ops.py --skip-fetch --model-type both
+python run_ops.py --model-type lightgbm --no-calibration
+python run_ops.py --model-type both --with-stage
+python run_ops.py --skip-monitoring
 ```
 
 ## 4) How to schedule on Windows (Task Scheduler)

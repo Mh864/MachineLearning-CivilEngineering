@@ -1,6 +1,6 @@
 # API Guide (FastAPI)
 
-The API exposes the trained classifier and supporting data endpoints for the flood exceedance task. CORS is enabled for local development (`allow_origins=["*"]`).
+The API exposes the trained classifier, optional stage-regression model, and supporting data endpoints. CORS is enabled for local development (`allow_origins=["*"]`).
 
 ## Run
 
@@ -21,6 +21,7 @@ On startup the app loads the first artifact that exists:
 2. `models/model.pkl` (logistic **Pipeline**)
 
 The chosen path is reported by **`GET /health`**.
+If `models/stage_model.pkl` exists, stage artifact status is also reported.
 
 ## `GET /health`
 
@@ -31,6 +32,8 @@ Lightweight **liveness/readiness** response for monitoring:
   "status": "ok",
   "model_loaded": true,
   "artifact_path": "models/lgbm_model.pkl",
+  "stage_model_loaded": true,
+  "stage_artifact_path": "models/stage_model.pkl",
   "uptime_seconds": 123.456
 }
 ```
@@ -40,7 +43,7 @@ Lightweight **liveness/readiness** response for monitoring:
 
 ## `GET /latest`
 
-Returns the last 7 daily discharge values (and aligned NOAA fields when `data/raw/noaa/rainfall_<Location>.csv` exists) for autofill in the UI. Response includes `rainfall_mm`, `tmax_c`, `tmin_c`, and when those files contain the columns, `awnd` (m/s), `snow` (mm), and `snow_depth` (mm, from SNWD). See `api/app.py` for query parameters (`site_id`, optional `end_date`).
+Returns the last 7 daily discharge values and optional stage values (plus aligned NOAA fields when `data/raw/noaa/rainfall_<Location>.csv` exists) for autofill in the UI. Response includes `rainfall_mm`, `tmax_c`, `tmin_c`, and when those files contain the columns, `awnd` (m/s), `snow` (mm), and `snow_depth` (mm, from SNWD). See `api/app.py` for query parameters (`site_id`, optional `end_date`).
 
 ## `GET /predict`
 
@@ -50,7 +53,7 @@ Query parameters:
 |-----------|----------|-------------|
 | `site_id` | yes | USGS site id (traceability; not always a model feature) |
 | `recent_discharge` | yes | Comma-separated **ft³/s** values, **oldest → newest**, ≥ 7 days |
-| `as_of_date` | no | `YYYY-MM-DD` for the **month** feature; default UTC today |
+| `as_of_date` | no | `YYYY-MM-DD` for seasonality features (`month_sin`, `month_cos`); default UTC today |
 | `recent_prcp` | no | Comma-separated mm/day, oldest→newest, ≥ 7 if provided |
 | `tmax`, `tmin` | no | Comma-separated same-day series (≥ 7 if used end-to-end) |
 | `awnd`, `snow`, `snow_depth` | no | Same pattern when supplied |
@@ -58,22 +61,64 @@ Query parameters:
 
 Response:
 
+Binary-compatible response:
+
 ```json
 {
   "site_id": "01646500",
-  "prediction": 0,
-  "probability": 0.42
+  "prediction": 1,
+  "probability": 0.72,
+  "risk_label": "high"
 }
 ```
 
-- **`prediction`:** binary class (`1` = higher estimated probability of next-day exceedance).
-- **`probability`:** `predict_proba` positive class (`1`), from the loaded sklearn estimator (Pipeline or LightGBM).
+Multiclass response:
+
+```json
+{
+  "site_id": "01646500",
+  "prediction": 2,
+  "probability": {
+    "normal": 0.08,
+    "medium": 0.21,
+    "high": 0.71
+  }
+}
+```
+
+- **`prediction`:** class index (`0/1` for binary, `0/1/2` for multiclass).
+- **`probability`:** either scalar positive-class probability (binary) or class-probability map (multiclass).
 
 Feature construction matches `modeling/features.py` / `api/predict.py` (seven-day windows, lag alignment).
 
+## `GET /predict-stage`
+
+Predicts next-day river stage (regression) when `models/stage_model.pkl` is available.
+
+Query parameters:
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `site_id` | yes | USGS site id |
+| `recent_stage` | yes | Comma-separated stage values, oldest → newest, ≥ 7 |
+| `recent_discharge` | no | Optional discharge series, oldest → newest, ≥ 7 |
+| `recent_prcp` | no | Optional precipitation series |
+| `tmax`, `tmin` | no | Optional temperature series |
+| `as_of_date` | no | `YYYY-MM-DD` for month feature |
+
+Response:
+
+```json
+{
+  "site_id": "01646500",
+  "predicted_stage_next_day": 3.84,
+  "units": "ft"
+}
+```
+
 ## Error behavior
 
-- Invalid or short `recent_discharge` → HTTP **400** with a clear `detail` message.
+- Invalid or short `recent_discharge` / `recent_stage` → HTTP **400** with a clear `detail` message.
 - Missing model files at startup → process fails fast (no silent fallback).
 
 ## Serving validation (recommended)

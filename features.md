@@ -1,6 +1,6 @@
 # Features Guide
 
-This document explains the engineered features used by the current baseline model, why they exist, and how they are computed.
+This document explains the engineered features used by the current models, why they exist, and how they are computed.
 
 ## Where features are defined
 
@@ -15,8 +15,13 @@ Current feature columns:
 - `discharge_lag3`
 - `discharge_roll_mean_3`
 - `discharge_roll_mean_7`
+- `discharge_roll_std_3`
+- `discharge_roll_std_7`
+- `discharge_roll_max_3`
+- `discharge_roll_max_7`
 - `discharge_diff_1`
-- `month`
+- `month_sin`
+- `month_cos`
 - `prcp_lag1`
 - `prcp_lag2`
 - `prcp_lag3`
@@ -25,6 +30,7 @@ Current feature columns:
 - `prcp_roll_mean_3`
 - `prcp_roll_mean_7`
 - `heavy_rain_flag_1d`
+- `days_since_last_heavy_rain`
 - `tmax`
 - `tmin`
 - `tavg`
@@ -92,11 +98,11 @@ Rows are sorted per site by date before any lag/rolling operation.
 - What it does: estimates first-order daily change (rise/fall speed).
 - Why it helps: a rapidly rising river can indicate elevated next-day exceedance risk.
 
-### 7) `month`
+### 7) `month_sin`, `month_cos`
 
-- Definition: month extracted from `date` (`1` to `12`)
-- What it does: injects coarse seasonality.
-- Why it helps: high-flow behavior often follows seasonal snowmelt/rainfall cycles.
+- Definition: cyclic encoding of month (`sin(2πm/12)`, `cos(2πm/12)`).
+- What it does: injects seasonality without artificial jump between December and January.
+- Why it helps: smoother seasonal learning than raw integer month.
 
 ### 8) `prcp_lag1`
 
@@ -145,6 +151,12 @@ Rows are sorted per site by date before any lag/rolling operation.
 - Definition: binary flag where `1` if `prcp > heavy_rain_threshold`, else `0`.
 - What it does: creates an event-style extreme rain indicator.
 - Why it helps: heavy rainfall events can trigger abrupt flood-risk jumps.
+
+### 16) `days_since_last_heavy_rain`
+
+- Definition: days elapsed since most recent day where `prcp > heavy_rain_threshold` (per site, chronological).
+- What it does: captures recency of extreme rainfall events.
+- Why it helps: basin response often decays gradually after heavy rain.
 
 ### 16) `tmax`
 
@@ -200,15 +212,23 @@ Rows are sorted per site by date before any lag/rolling operation.
 - What it does: combines recent cumulative rain with recent average discharge.
 - Why it helps: captures compounding effects between wet catchment and elevated baseflow.
 
-## Target definition used with features
+## Target definitions used with features
 
-The model predicts whether the **next day** is above a site-specific high-flow threshold.
+The dataset contains both binary and multiclass next-day targets.
 
 Per site:
 
-1. Compute `threshold` = percentile of historical discharge (default `0.9`).
+1. Compute per-site thresholds:
+   - `threshold_medium` = p75 discharge
+   - `threshold_high` = p90 discharge
+   - `threshold` (compatibility binary) = p90 discharge
 2. Compute `discharge_next_day` by shifting discharge by `-1`.
-3. Set `target = 1` if `discharge_next_day > threshold`, else `0`.
+3. Set:
+   - `target` (binary) = `1` if `discharge_next_day > threshold`, else `0`
+   - `target_multiclass`:
+     - `0` if `<= threshold_medium`
+     - `1` if `threshold_medium < x <= threshold_high`
+     - `2` if `> threshold_high`
 
 Rows without enough history (lags/rolling) or missing next day are dropped.
 
@@ -232,7 +252,7 @@ This avoids direct leakage from future values into feature columns.
 - NOAA weather is now included (precipitation, temperature, optional wind/snow), but humidity/pressure/radiation are still missing.
 - No static watershed characteristics.
 - No multi-site upstream/downstream relationship features.
-- Month as integer is a coarse seasonal proxy.
+- No upstream network topology features are included yet.
 
 ## Training vs API feature consistency
 
@@ -258,7 +278,7 @@ Computed features:
 - `discharge_roll_mean_3 = (130+140+150)/3 = 140`
 - `discharge_roll_mean_7 = (100+105+110+120+130+140+150)/7 = 122.14...`
 - `discharge_diff_1 = 150 - 140 = 10`
-- `month = from as_of_date or current UTC date`
+- `month_sin/month_cos = from as_of_date or current UTC date`
 - `prcp_lag1 = yesterday precipitation`
 - `prcp_roll_sum_3 = precipitation sum over last 3 days`
 - `prcp_roll_sum_7 = precipitation sum over last 7 days`

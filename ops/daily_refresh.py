@@ -33,6 +33,7 @@ def _run_pipeline(
     model_type: str,
     skip_fetch: bool,
     no_calibration: bool,
+    with_stage: bool,
     log_path: Path,
 ) -> tuple[int, list[str]]:
     cmd: list[str] = [
@@ -49,6 +50,8 @@ def _run_pipeline(
         cmd.append("--skip-fetch")
     if no_calibration:
         cmd.append("--no-calibration")
+    if with_stage:
+        cmd.append("--with-stage")
 
     proc = subprocess.run(
         cmd,
@@ -105,6 +108,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--model-type", choices=["baseline", "lightgbm", "both"], default="both")
     p.add_argument("--skip-fetch", action="store_true", help="Skip USGS fetch step in run_pipeline.py")
     p.add_argument("--no-calibration", action="store_true", help="Train uncalibrated models")
+    p.add_argument("--with-stage", action="store_true", help="Run stage regression pipeline steps too")
     return p
 
 
@@ -123,6 +127,7 @@ def main() -> int:
         model_type=args.model_type,
         skip_fetch=bool(args.skip_fetch),
         no_calibration=bool(args.no_calibration),
+        with_stage=bool(args.with_stage),
         log_path=log_path,
     )
 
@@ -140,6 +145,7 @@ def main() -> int:
             "model_type": args.model_type,
             "skip_fetch": bool(args.skip_fetch),
             "no_calibration": bool(args.no_calibration),
+            "with_stage": bool(args.with_stage),
         },
         "model_backups": backups,
     }

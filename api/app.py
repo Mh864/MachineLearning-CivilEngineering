@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.predict import load_model_artifact, predict_from_recent_discharge
+from api.predict_stage import load_stage_model_artifact, predict_next_stage
 
 
 app = FastAPI(title="Flood Risk Prediction API", version="0.1.0")
@@ -24,6 +25,8 @@ app.add_middleware(
 
 _artifact = None
 _artifact_path: str | None = None
+_stage_artifact = None
+_stage_artifact_path: str | None = None
 _API_START_TIME = time.time()
 
 USGS_RAW_DIR = Path("data/raw/usgs")
@@ -141,8 +144,12 @@ def _normalize_usgs_site_column(series: pd.Series) -> pd.Series:
 
 @app.on_event("startup")
 def _startup() -> None:
-    global _artifact, _artifact_path
+    global _artifact, _artifact_path, _stage_artifact, _stage_artifact_path
     _artifact, _artifact_path = _load_artifact_pair()
+    stage_path = Path("models/stage_model.pkl")
+    if stage_path.exists():
+        _stage_artifact = load_stage_model_artifact(stage_path.as_posix())
+        _stage_artifact_path = stage_path.as_posix()
 
 
 @app.get("/health")
@@ -152,6 +159,8 @@ def health() -> dict:
         "status": "ok",
         "model_loaded": _artifact is not None,
         "artifact_path": _artifact_path,
+        "stage_model_loaded": _stage_artifact is not None,
+        "stage_artifact_path": _stage_artifact_path,
         "uptime_seconds": round(time.time() - _API_START_TIME, 3),
     }
     if _artifact is not None:
@@ -228,6 +237,10 @@ def get_latest(
     dates_dt = site_data["date_parsed"].dt.normalize()
     dates = [d.strftime("%Y-%m-%d") for d in dates_dt]
     discharge_values = [round(float(v), 1) for v in site_data["discharge"].tolist()]
+    stage_series = site_data["stage"] if "stage" in site_data.columns else pd.Series([pd.NA] * len(site_data), index=site_data.index)
+    stage_values_raw = pd.to_numeric(stage_series, errors="coerce")
+    stage_available = bool(stage_values_raw.notna().any())
+    stage_values = [None if pd.isna(v) else round(float(v), 2) for v in stage_values_raw.tolist()]
 
     noaa_slug = SITE_TO_NOAA.get(site_norm)
     rainfall_available = False
@@ -290,6 +303,8 @@ def get_latest(
         "site_id": site_norm,
         "dates": dates,
         "discharge": discharge_values,
+        "stage": stage_values,
+        "stage_available": stage_available,
         "rainfall_mm": rainfall_mm,
         "rainfall_available": rainfall_available,
         "tmax_c": tmax_c,
@@ -353,14 +368,62 @@ def predict(
         heavy_rain_threshold=heavy_rain_threshold,
     )
 
-    if isinstance(result, tuple):
-        pred, proba = result
-    else:
-        pred = int(result)
-        proba = float(result)
+    response = {
+        "site_id": site_id,
+        "prediction": int(result["prediction"]),
+        "probability": result["probability"],
+    }
+    if isinstance(result["probability"], float):
+        response["risk_label"] = "high" if int(result["prediction"]) == 1 else "normal"
+    return response
 
+
+@app.get("/predict-stage")
+def predict_stage(
+    site_id: str = Query(..., description="USGS site id"),
+    recent_stage: str = Query(
+        ...,
+        description="Comma-separated recent stage values (oldest->newest, need >=7).",
+    ),
+    recent_discharge: Optional[str] = Query(
+        None,
+        description="Optional comma-separated discharge values aligned to stage window (>=7).",
+    ),
+    as_of_date: Optional[str] = Query(None, description="YYYY-MM-DD for month feature; defaults to today (UTC)."),
+    recent_prcp: Optional[str] = Query(None, description="Optional comma-separated rainfall series."),
+    tmax: Optional[str] = Query(None, description="Optional comma-separated TMAX series."),
+    tmin: Optional[str] = Query(None, description="Optional comma-separated TMIN series."),
+):
+    global _stage_artifact, _stage_artifact_path
+    if _stage_artifact is None:
+        stage_path = Path("models/stage_model.pkl")
+        if not stage_path.exists():
+            raise HTTPException(status_code=404, detail="Stage model artifact not found: models/stage_model.pkl")
+        _stage_artifact = load_stage_model_artifact(stage_path.as_posix())
+        _stage_artifact_path = stage_path.as_posix()
+
+    recent_stage_vals = [float(x.strip()) for x in recent_stage.split(",") if x.strip() != ""]
+    if len(recent_stage_vals) < 7:
+        raise HTTPException(
+            status_code=400,
+            detail="recent_stage must contain at least 7 comma-separated numeric values (oldest to newest).",
+        )
+
+    discharge_vals = _parse_optional_float_list(recent_discharge)
+    prcp_vals = _parse_optional_float_list(recent_prcp)
+    tmax_vals = _parse_optional_float_list(tmax)
+    tmin_vals = _parse_optional_float_list(tmin)
+    pred_stage = predict_next_stage(
+        artifact=_stage_artifact,
+        recent_stage=recent_stage_vals,
+        as_of_date=as_of_date,
+        recent_discharge=discharge_vals,
+        recent_prcp=prcp_vals,
+        recent_tmax=tmax_vals,
+        recent_tmin=tmin_vals,
+    )
     return {
         "site_id": site_id,
-        "prediction": int(pred),
-        "probability": float(proba),
+        "predicted_stage_next_day": float(pred_stage),
+        "units": "ft",
     }
