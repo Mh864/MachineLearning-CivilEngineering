@@ -11,7 +11,6 @@ export const STATIONS: Station[] = [
   { siteId: "05054000", name: "Red River of the North at Fargo", state: "ND" },
   { siteId: "06710247", name: "Cherry Creek at Denver", state: "CO" },
   { siteId: "08066500", name: "Trinity River at Romayor", state: "TX" },
-  { siteId: "09380000", name: "Colorado River near Lees Ferry", state: "AZ" },
   { siteId: "11425500", name: "Sacramento River at Verona", state: "CA" },
   { siteId: "12301933", name: "Clark Fork above Missoula", state: "MT" },
   { siteId: "14211720", name: "Willamette River at Portland", state: "OR" },
