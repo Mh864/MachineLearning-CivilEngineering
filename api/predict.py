@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import joblib
 import numpy as np
 import pandas as pd
+
+_SITE_STATS_CACHE: dict[str, tuple[float, float, float]] | None = None
+_SITE_STATS_MTIME: float = 0.0
 
 
 def load_model_artifact(path: str = "models/model.pkl") -> dict[str, Any]:
@@ -24,8 +28,50 @@ def _last_scalar(seq: list[float] | None) -> float:
     return float(seq[-1])
 
 
+def _normalize_site_id_key(site_id: str) -> str:
+    return str(int(str(site_id).strip())).zfill(8)
+
+
+def _load_site_stats(features_path: str = "data/processed/features.csv") -> dict[str, tuple[float, float, float]]:
+    global _SITE_STATS_CACHE, _SITE_STATS_MTIME
+    features_file = Path(features_path)
+    mtime = 0.0
+    try:
+        mtime = float(features_file.stat().st_mtime)
+    except Exception:
+        mtime = 0.0
+    if _SITE_STATS_CACHE is not None and mtime <= _SITE_STATS_MTIME:
+        return _SITE_STATS_CACHE
+
+    df = pd.read_csv(features_path, dtype={"site_id": "string"})
+    required = {"site_id", "site_median", "threshold_medium", "threshold_high"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"Missing required site-threshold columns in {features_path}: {sorted(missing)}")
+
+    dedup = (
+        df[["site_id", "site_median", "threshold_medium", "threshold_high"]]
+        .dropna(subset=["site_id"])
+        .copy()
+    )
+    dedup["site_id"] = dedup["site_id"].astype("string").str.strip().map(_normalize_site_id_key)
+    dedup = dedup.drop_duplicates(subset=["site_id"], keep="last")
+
+    stats: dict[str, tuple[float, float, float]] = {}
+    for _, row in dedup.iterrows():
+        site_median = float(pd.to_numeric(row["site_median"], errors="coerce"))
+        p75 = float(pd.to_numeric(row["threshold_medium"], errors="coerce"))
+        p90 = float(pd.to_numeric(row["threshold_high"], errors="coerce"))
+        stats[str(row["site_id"])] = (site_median, p75, p90)
+
+    _SITE_STATS_CACHE = stats
+    _SITE_STATS_MTIME = mtime
+    return stats
+
+
 def _build_feature_frame(
     *,
+    site_id: str,
     feature_cols: list[str],
     date: pd.Timestamp,
     recent_discharge: list[float],
@@ -47,6 +93,14 @@ def _build_feature_frame(
     """
     if len(recent_discharge) < 7:
         raise ValueError("Need at least 7 recent discharge values (oldest -> newest).")
+    site_key = _normalize_site_id_key(site_id)
+    site_stats = _load_site_stats()
+    if site_key not in site_stats:
+        raise ValueError(f"No per-site thresholds found for site_id={site_id!r} in data/processed/features.csv")
+    site_median, site_p75, site_p90 = site_stats[site_key]
+    median_denom = site_median if np.isfinite(site_median) and site_median > 0 else 1.0
+    p75_denom = site_p75 if np.isfinite(site_p75) and site_p75 > 0 else 1.0
+    p90_denom = site_p90 if np.isfinite(site_p90) and site_p90 > 0 else 1.0
 
     x = np.array(recent_discharge[-7:], dtype=float)
     # Align with sdf["discharge_lag1"] = discharge.shift(1) at row D
@@ -60,6 +114,14 @@ def _build_feature_frame(
     discharge_roll_max_3 = float(np.max(x[-3:]))
     discharge_roll_max_7 = float(np.max(x[-7:]))
     discharge_diff_1 = float(x[-1] - x[-2])
+    discharge_norm_median = float(x[-1] / median_denom)
+    discharge_lag1_norm = float(discharge_lag1 / median_denom)
+    discharge_lag2_norm = float(discharge_lag2 / median_denom)
+    discharge_lag3_norm = float(discharge_lag3 / median_denom)
+    discharge_roll_mean_3_norm = float(discharge_roll_mean_3 / median_denom)
+    discharge_roll_mean_7_norm = float(discharge_roll_mean_7 / median_denom)
+    discharge_pct_of_p75 = float(x[-1] / p75_denom)
+    discharge_pct_of_p90 = float(x[-1] / p90_denom)
     month = int(date.month)
     month_sin = float(np.sin(2.0 * np.pi * month / 12.0))
     month_cos = float(np.cos(2.0 * np.pi * month / 12.0))
@@ -111,6 +173,14 @@ def _build_feature_frame(
         "discharge_roll_max_3": discharge_roll_max_3,
         "discharge_roll_max_7": discharge_roll_max_7,
         "discharge_diff_1": discharge_diff_1,
+        "discharge_norm_median": discharge_norm_median,
+        "discharge_lag1_norm": discharge_lag1_norm,
+        "discharge_lag2_norm": discharge_lag2_norm,
+        "discharge_lag3_norm": discharge_lag3_norm,
+        "discharge_roll_mean_3_norm": discharge_roll_mean_3_norm,
+        "discharge_roll_mean_7_norm": discharge_roll_mean_7_norm,
+        "discharge_pct_of_p75": discharge_pct_of_p75,
+        "discharge_pct_of_p90": discharge_pct_of_p90,
         "month": month,
         "month_sin": month_sin,
         "month_cos": month_cos,
@@ -144,6 +214,7 @@ def _build_feature_frame(
 def predict_from_recent_discharge(
     *,
     artifact: dict[str, Any],
+    site_id: str,
     recent_discharge: list[float],
     as_of_date: str | None = None,
     recent_prcp: list[float] | None = None,
@@ -163,6 +234,7 @@ def predict_from_recent_discharge(
         date = pd.to_datetime(as_of_date, errors="raise")
 
     X = _build_feature_frame(
+        site_id=site_id,
         feature_cols=feature_cols,
         date=date,
         recent_discharge=recent_discharge,

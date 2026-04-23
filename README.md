@@ -24,14 +24,14 @@ This README is the **single place** that lists what the project includes and **h
 
 | Area | What it is |
 |------|------------|
-| **Core ML** | USGS + NOAA → `clean_data.csv` → `features.csv` → train logistic + LightGBM → chronological train/val/test, no leakage. |
+| **Core ML** | Real USGS + NOAA (2018-2024) → `clean_data.csv` → `features.csv` (38 features) → train logistic + LightGBM → chronological train/val/test, no leakage. |
 | **Target** | Per gauge: `target_multiclass` (0 normal `<=p75`, 1 medium `(p75,p90]`, 2 high `>p90`) and compatibility `target` binary (`>p90`). |
 | **Snow** | `snow` and `snow_depth` in `FEATURE_COLUMNS`; NOAA `SNOW`/`SNWD` merged when present; missing filled like other weather (see `features.md`). Retrain after adding these so artifacts match. |
-| **Step 1 — Evaluation** | `modeling.evaluate --compare` writes **`test_brier`**, global metrics, and **`per_site_test`** (per USGS id on the held-out test slice). Console prints a **Test Brier** column. |
+| **Step 1 — Evaluation** | `modeling.evaluate --compare` writes global metrics and model comparison outputs (including validation/test Macro-F1 for multiclass). |
 | **Step 2 — Calibration** | After training on **train**, probabilities are calibrated on **validation** (isotonic, else sigmoid). Saved in `models/*.pkl` under **`calibration`**. API `/predict` returns **calibrated** `probability` unless you use `--no-calibration`. |
 | **Step 3 — Parity test** | `tests/test_feature_parity.py` checks **`api/predict._build_feature_frame`** matches **`modeling.features._add_features_per_site`** for the same 7-day window. Uses `merge_weather_into_site_discharge`. |
-| **API** | FastAPI: `/health`, `/latest`, `/predict` (binary + multiclass compatible), `/predict-stage`. |
-| **Frontend** | Next.js dashboard (`frontend/` or `frontend1/`): station picker, 7-day inputs, **Predict**; needs API running. |
+| **API** | FastAPI: `/health`, `/latest`, `/predict`, `/predict-stage` with real-station weather/discharge payloads and multiclass probability output. |
+| **Frontend** | Next.js dashboard (`frontend/` or `frontend1/`): station selector, auto-filled 7-day history, trend chart, flood probability headline (high class), risk decomposition, diagnostics, stage forecast, model status. |
 
 ## How to verify the work (runbook)
 
@@ -77,7 +77,7 @@ Do these from the **repository root** after `pip install -r requirements.txt` (a
 
 ```text
 api/
-  app.py                 FastAPI: /latest, /predict, /health
+  app.py                 FastAPI: /latest, /predict, /predict-stage, /health
   predict.py             Artifact loading + feature reconstruction + inference
 
 data/
@@ -85,7 +85,7 @@ data/
   raw/noaa/              NOAA rainfall_*.csv + optional noaa_daily_*.csv
   processed/
     clean_data.csv       Cleaned daily time series
-    features.csv         Model-ready feature matrix + target
+    features.csv         Model-ready feature matrix (38 features) + targets
 
 data_ingestion/
   fetch_usgs.py          USGS NWIS daily values
@@ -112,6 +112,7 @@ modeling/
 models/
   model.pkl              Logistic Pipeline artifact (preferred name for baseline)
   lgbm_model.pkl         LightGBM artifact
+  stage_model.pkl        Stage regression artifact (next-day stage)
 
 results/
   metrics*.json          Per-model validation/test metrics
@@ -198,8 +199,10 @@ python run_api.py
 ```
 
 - Docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-- **GET `/health`** — process uptime, whether a model artifact is loaded, which file (`models/lgbm_model.pkl` preferred over `models/model.pkl`), and when present the **`calibration`** block from the artifact (method and `fit_on: validation`).
-- **GET `/predict-stage`** — optional stage-regression endpoint (requires `models/stage_model.pkl`), predicts next-day river stage from recent stage window.
+- **GET `/health`** — process uptime, model/stage artifact status and paths, calibration metadata, and last refresh metadata when available.
+- **GET `/latest`** — last 7 days for a station (discharge/stage plus rainfall/weather series), with data span metadata (`latest_date`, `data_start`, `data_end`).
+- **GET `/predict`** — multiclass flood-risk prediction from `site_id` + recent discharge (optional weather inputs supported), returns `prediction` plus `probability.normal|medium|high`.
+- **GET `/predict-stage`** — stage-regression endpoint (requires `models/stage_model.pkl`), predicts next-day river stage from recent stage window.
 
 ## Probability calibration
 
@@ -234,9 +237,13 @@ Run this after any change to feature definitions or inference reconstruction.
 - **Task:** multiclass risk by default (plus optional binary compatibility and stage regression); **horizon:** 1 day; **sites:** 10 USGS gauges.
 - **Targets:** `target_multiclass` with per-site p75/p90 boundaries and compatibility `target` binary (`>p90`).
 - **Baseline:** Logistic Regression pipeline (multinomial for multiclass target).
-- **Strong model:** LightGBM with multiclass objective for multiclass target.
+- **Strong model:** LightGBM with multiclass objective for multiclass target (38 features, including per-site normalized discharge features).
 
 **Metrics:** Multiclass runs report accuracy/macro precision/macro recall/macro F1/confusion matrix. Binary runs report precision/recall/F1 + ROC-AUC + Brier and use validation-optimized threshold stored in the artifact.
+
+**Current comparison (real data retrain):**
+- LightGBM — Validation Macro-F1: **0.803**, Test Macro-F1: **0.534**
+- Logistic Regression — Validation Macro-F1: **0.603**, Test Macro-F1: **0.440**
 
 ## Frontend (`frontend/` or `frontend1/`)
 
@@ -252,10 +259,36 @@ npm run dev
 Set **`NEXT_PUBLIC_API_URL`** if the FastAPI backend is not at `http://127.0.0.1:8000` (no trailing slash). Run **`python run_api.py`** in a separate terminal so the UI can reach `/latest`, `/predict`, and `/predict-stage`.
 
 The dashboard keeps the same design language while adding analytics cards:
+- station selector for all 10 gauges with auto-fill from `/latest`,
+- discharge trend chart for the most recent 7 days,
+- flood probability headline based on `probability.high`,
 - class probability decomposition (normal/medium/high),
 - input diagnostics (window min/max/mean/volatility),
 - stage forecast summary,
 - operational model status and last refresh metadata (from `/health`).
+
+## Feature set (38 columns)
+
+The current multiclass classifiers train on **38 feature columns**:
+
+- **Discharge autoregressive:** `discharge_lag1`, `discharge_lag2`, `discharge_lag3`, `discharge_roll_mean_3`, `discharge_roll_mean_7`, `discharge_roll_std_3`, `discharge_roll_std_7`, `discharge_roll_max_3`, `discharge_roll_max_7`, `discharge_diff_1`
+- **Normalized discharge (per-site):** `discharge_norm_median`, `discharge_lag1_norm`, `discharge_lag2_norm`, `discharge_lag3_norm`, `discharge_roll_mean_3_norm`, `discharge_roll_mean_7_norm`, `discharge_pct_of_p75`, `discharge_pct_of_p90`
+- **Seasonality:** `month_sin`, `month_cos`
+- **Precipitation:** `prcp_lag1`, `prcp_lag2`, `prcp_lag3`, `prcp_roll_sum_3`, `prcp_roll_sum_7`, `prcp_roll_mean_3`, `prcp_roll_mean_7`, `heavy_rain_flag_1d`, `days_since_last_heavy_rain`, `prcp_x_discharge_lag1`, `prcp_roll_sum_3_x_discharge_roll_mean_3`
+- **Weather:** `tmax`, `tmin`, `tavg`, `temp_range`, `awnd`, `snow`, `snow_depth`
+
+Per-site flood thresholds are computed from real USGS history (2018-2024). Current reference values:
+
+- Potomac (`01646500`): median `7,600`, p75 `14,200`, p90 `28,540`
+- Neuse (`02087500`): median `664`, p75 `1,710`, p90 `3,508`
+- Allegheny (`03015500`): median `375`, p75 `748`, p90 `1,450`
+- Red River (`05054000`): median `845`, p75 `2,040`, p90 `4,060`
+- Cherry Creek (`06710247`): median `46`, p75 `93`, p90 `211`
+- Trinity (`08066500`): median `3,213`, p75 `14,000`, p90 `31,913`
+- Colorado (`09380000`): median `11,100`, p75 `12,600`, p90 `14,600`
+- Sacramento (`11425500`): median `11,200`, p75 `17,500`, p90 `34,380`
+- Clark Fork (`12301933`): median `8,110`, p75 `12,900`, p90 `20,000`
+- Willamette (`14211720`): median `17,600`, p75 `34,800`, p90 `63,640`
 
 ## Documentation
 

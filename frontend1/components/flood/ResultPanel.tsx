@@ -4,14 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import {
-  getRiskLevel,
   getRiskConfig,
   formatDischarge,
   type Station,
 } from "@/lib/constants"
 import {
-  formatModelProbabilityDisplay,
-  getHighRiskProbability,
   getTrend,
   type PredictionResponse,
   type StagePredictionResponse,
@@ -58,20 +55,19 @@ export function ResultPanel({ result, stageResult, dischargeValues, station }: R
     )
   }
 
-  const riskSignal = typeof result.probability === "number" ? result.probability : getHighRiskProbability(result.probability)
   const predictionClass = result.prediction
+  const floodProbability = typeof result.probability === "number" ? result.probability : result.probability.high ?? result.probability["2"] ?? 0
+  const floodProbabilityPercent = Math.round(floodProbability * 100)
+  const barValue = Math.min(100, Math.max(0, floodProbabilityPercent))
+  const probabilityHeadline = `${floodProbabilityPercent}%`
   const riskLevel =
-    typeof result.probability === "number"
-      ? getRiskLevel(riskSignal)
-      : predictionClass === 2
-        ? "high"
-        : predictionClass === 1
-          ? "medium"
-          : "low"
+    floodProbabilityPercent < 35
+      ? "low"
+      : floodProbabilityPercent <= 60
+        ? "medium"
+        : "high"
   const riskConfig = getRiskConfig(riskLevel)
   const trend = getTrend(dischargeValues)
-  const { barValue, headline: probabilityHeadline } =
-    formatModelProbabilityDisplay(result.probability, result.prediction)
 
   const currentDischarge = dischargeValues[dischargeValues.length - 1] || 0
   const avgDischarge =
@@ -155,7 +151,7 @@ export function ResultPanel({ result, stageResult, dischargeValues, station }: R
               {probabilityHeadline}
             </span>
             <p className="text-sm text-muted-foreground mt-1">
-              {typeof result.probability === "number" ? "flood probability tomorrow" : "selected risk-class probability"}
+              flood probability tomorrow
             </p>
           </div>
 

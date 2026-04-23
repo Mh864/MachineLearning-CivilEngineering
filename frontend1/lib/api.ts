@@ -175,9 +175,9 @@ export function getHighRiskProbability(probability: PredictionResponse["probabil
 
 export function formatModelProbabilityDisplay(
   probability: PredictionResponse["probability"],
-  prediction: number
+  _prediction: number
 ) {
-  const p = typeof probability === "number" ? probability : prediction === 2 ? probability.high : prediction === 1 ? probability.medium : probability.normal
+  const p = typeof probability === "number" ? probability : probability.high ?? probability["2"] ?? 0
   const pct = Math.round(p * 100)
   const barValue = Math.min(100, Math.max(0, pct))
   return { barValue, headline: `${pct}%` }
@@ -187,9 +187,13 @@ export function getTrend(values: number[]): "rising" | "falling" | "stable" {
   if (values.length < 2) return "stable"
   const first = values[0]
   const last = values[values.length - 1]
-  const delta = last - first
-  const threshold = Math.max(Math.abs(first) * 0.02, 1)
-  if (delta > threshold) return "rising"
-  if (delta < -threshold) return "falling"
+  if (first === 0) {
+    if (last > 0) return "rising"
+    if (last < 0) return "falling"
+    return "stable"
+  }
+  const changePercent = ((last - first) / first) * 100
+  if (changePercent > 5) return "rising"
+  if (changePercent < -5) return "falling"
   return "stable"
 }

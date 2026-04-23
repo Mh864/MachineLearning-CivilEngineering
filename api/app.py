@@ -357,6 +357,7 @@ def predict(
 
     result = predict_from_recent_discharge(
         artifact=_artifact,
+        site_id=site_id,
         recent_discharge=recent,
         as_of_date=as_of_date,
         recent_prcp=prcp_list,
