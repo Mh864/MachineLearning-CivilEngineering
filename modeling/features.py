@@ -31,6 +31,14 @@ FEATURE_COLUMNS = [
     "discharge_roll_max_3",
     "discharge_roll_max_7",
     "discharge_diff_1",
+    "discharge_norm_median",
+    "discharge_lag1_norm",
+    "discharge_lag2_norm",
+    "discharge_lag3_norm",
+    "discharge_roll_mean_3_norm",
+    "discharge_roll_mean_7_norm",
+    "discharge_pct_of_p75",
+    "discharge_pct_of_p90",
     "month_sin",
     "month_cos",
     "prcp_lag1",
@@ -261,12 +269,26 @@ def _add_features_per_site(
 def _add_target_per_site(sdf: pd.DataFrame, *, percentile: float = 0.9) -> pd.DataFrame:
     sdf = sdf.sort_values("date").copy()
 
+    site_median = float(np.nanmedian(sdf["discharge"].to_numpy(dtype=float)))
     threshold = float(np.nanpercentile(sdf["discharge"].to_numpy(dtype=float), percentile * 100))
     threshold_medium = float(np.nanpercentile(sdf["discharge"].to_numpy(dtype=float), 75.0))
     threshold_high = float(np.nanpercentile(sdf["discharge"].to_numpy(dtype=float), 90.0))
+    median_denom = site_median if np.isfinite(site_median) and site_median > 0 else 1.0
+    p75_denom = threshold_medium if np.isfinite(threshold_medium) and threshold_medium > 0 else 1.0
+    p90_denom = threshold_high if np.isfinite(threshold_high) and threshold_high > 0 else 1.0
+
+    sdf["site_median"] = site_median
     sdf["threshold"] = threshold
     sdf["threshold_medium"] = threshold_medium
     sdf["threshold_high"] = threshold_high
+    sdf["discharge_norm_median"] = sdf["discharge"] / median_denom
+    sdf["discharge_lag1_norm"] = sdf["discharge_lag1"] / median_denom
+    sdf["discharge_lag2_norm"] = sdf["discharge_lag2"] / median_denom
+    sdf["discharge_lag3_norm"] = sdf["discharge_lag3"] / median_denom
+    sdf["discharge_roll_mean_3_norm"] = sdf["discharge_roll_mean_3"] / median_denom
+    sdf["discharge_roll_mean_7_norm"] = sdf["discharge_roll_mean_7"] / median_denom
+    sdf["discharge_pct_of_p75"] = sdf["discharge"] / p75_denom
+    sdf["discharge_pct_of_p90"] = sdf["discharge"] / p90_denom
 
     sdf["discharge_next_day"] = sdf["discharge"].shift(-1)
     has_next = sdf["discharge_next_day"].notna()
@@ -324,6 +346,7 @@ def build_features_dataset(
         "threshold",
         "threshold_medium",
         "threshold_high",
+        "site_median",
         "discharge_next_day",
         "target",
         "target_multiclass",
