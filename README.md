@@ -258,6 +258,17 @@ npm run dev
 
 Set **`NEXT_PUBLIC_API_URL`** if the FastAPI backend is not at `http://127.0.0.1:8000` (no trailing slash). Run **`python run_api.py`** in a separate terminal so the UI can reach `/latest`, `/predict`, and `/predict-stage`.
 
+### Docker (dev hot reload + prod Nginx)
+
+From repo root:
+
+```bash
+docker compose --profile dev up --build    # http://localhost:3001 (Docker; local npm dev can stay on 3000)
+docker compose --profile prod up --build   # http://localhost:8080 (Nginx → Next)
+```
+
+Or `make docker-frontend-dev` / `make docker-frontend-prod`. Details: `docker/README.md`.
+
 The dashboard keeps the same design language while adding analytics cards:
 - station selector for all 10 gauges with auto-fill from `/latest`,
 - discharge trend chart for the most recent 7 days,

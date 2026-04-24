@@ -1,0 +1,13 @@
+# Development: bind-mount source from compose; entrypoint runs npm ci when node_modules is empty.
+FROM node:22-alpine
+
+WORKDIR /app
+RUN apk add --no-cache libc6-compat
+
+COPY docker-entrypoint.dev.sh /usr/local/bin/docker-entrypoint.dev.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.dev.sh
+
+ENV NEXT_TELEMETRY_DISABLED=1
+EXPOSE 3000
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.dev.sh"]

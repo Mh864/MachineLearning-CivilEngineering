@@ -1,0 +1,60 @@
+# Next.js dashboard (frontend1). Use profiles so dev and prod never start together.
+#
+# Development (hot reload):  docker compose --profile dev up --build
+# Host port defaults to 3001 so it does not clash with local `npm run dev` on 3000.
+# Override: DOCKER_WEB_DEV_PORT=3005 docker compose --profile dev up --build
+# Production (Nginx → app): docker compose --profile prod up --build
+#
+# If your app folder is named `frontend` instead of `frontend1`, change
+# `context` / volume paths below from ./frontend1 to ./frontend
+
+name: civil-engineering-frontend
+
+services:
+  web-dev:
+    profiles: [dev]
+    build:
+      context: ./frontend1
+      dockerfile: Dockerfile.dev
+    ports:
+      - "${DOCKER_WEB_DEV_PORT:-3001}:3000"
+    volumes:
+      - ./frontend1:/app
+      - web_dev_node_modules:/app/node_modules
+      - web_dev_next:/app/.next
+    environment:
+      # Improves file watching when the app runs in Docker Desktop (macOS/Windows)
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+    stdin_open: true
+    tty: true
+
+  web:
+    profiles: [prod]
+    build:
+      context: ./frontend1
+      dockerfile: Dockerfile.prod
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://127.0.0.1:8000}
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+
+  nginx:
+    profiles: [prod]
+    image: nginx:1.27-alpine
+    ports:
+      # Change left side to 80:80 if you want host port 80
+      - "8080:80"
+    volumes:
+      - ./docker/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - web
+
+volumes:
+  web_dev_node_modules:
+  web_dev_next:
