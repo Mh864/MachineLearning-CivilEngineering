@@ -44,8 +44,4 @@ Then open:
 - Web: `http://localhost:3000`
 - API health: `http://localhost:8000/health`
 
-N.B: Rivers do not flood everyday, so here are some of the many dates when they do:
-Potomac River on 04/04/2024
-Willamette 01/19/2024
-Neuse 04/13/2023
-Trinity 04/30/2024
+N.B: The 3 minute video focuses on sites and dates where rivers do flow, as it doesn't happen every day.
