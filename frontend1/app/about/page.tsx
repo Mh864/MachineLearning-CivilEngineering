@@ -54,7 +54,7 @@ export default function About() {
               discharge measurements and rainfall data. By analyzing patterns in water flow rates
               over the past several days along with precipitation data, the machine learning model
               can estimate the probability of flooding occurring within the next 24 hours. The
-              system monitors 10 gauge stations across the United States, providing real-time risk
+              system monitors 11 gauge stations across the United States, providing real-time risk
               assessment for major rivers.
             </p>
           </CardContent>
@@ -116,7 +116,7 @@ export default function About() {
               <MapPin className="h-5 w-5 text-[#185FA5]" />
               Monitored Stations
             </CardTitle>
-            <CardDescription>10 river gauge stations across the United States</CardDescription>
+            <CardDescription>11 river gauge stations across the United States</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">

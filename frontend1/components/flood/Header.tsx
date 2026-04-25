@@ -29,7 +29,7 @@ export function Header({ apiStatus }: HeaderProps) {
             <div>
               <h1 className="text-lg font-semibold text-foreground">Flood Risk Predictor</h1>
               <p className="text-xs text-muted-foreground">
-                Real-time river discharge analysis · 10 US gauge stations
+                Real-time river discharge analysis · 11 US gauge stations
               </p>
             </div>
           </div>

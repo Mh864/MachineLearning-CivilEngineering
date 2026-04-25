@@ -1,13 +1,16 @@
 "use client"
 
-import { format, parseISO } from "date-fns"
+import { format, getYear, isValid as isValidDate, parse, parseISO } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { StationSelector } from "./StationSelector"
 import { SevenDayInputs, type FeatureField } from "./SevenDayInputs"
 import type { Station } from "@/lib/constants"
-import { AlertCircle, Loader2, Waves } from "lucide-react"
+import { AlertCircle, Calendar as CalendarIcon, Loader2, Waves } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 
 function formatWindowEndLong(iso: string | null): string | null {
   if (!iso) return null
@@ -72,8 +75,38 @@ export function PredictionCard({
   onWindowEndDateChange,
 }: PredictionCardProps) {
   const valueCount = countFiniteDischarge(discharge)
-  const isValid = discharge.length >= 7 && discharge.slice(0, 7).every((n) => Number.isFinite(n))
+  const isSeriesValid = discharge.length >= 7 && discharge.slice(0, 7).every((n) => Number.isFinite(n))
   const windowEndLong = formatWindowEndLong(windowEndDate)
+
+  const windowEndTyped = useMemo(() => {
+    if (!windowEndDate) return ""
+    try {
+      return format(parseISO(windowEndDate), "MM/dd/yyyy")
+    } catch {
+      return ""
+    }
+  }, [windowEndDate])
+
+  const [windowEndInput, setWindowEndInput] = useState(windowEndTyped)
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false)
+
+  useEffect(() => {
+    setWindowEndInput(windowEndTyped)
+  }, [windowEndTyped])
+
+  function commitWindowEndInput(raw: string) {
+    const trimmed = raw.trim()
+    if (!trimmed) return
+
+    const parsed = parse(trimmed, "MM/dd/yyyy", new Date())
+    if (!isValidDate(parsed)) return
+
+    const iso = format(parsed, "yyyy-MM-dd")
+    if (dataRangeStart && iso < dataRangeStart) return
+    if (dataRangeEnd && iso > dataRangeEnd) return
+
+    onWindowEndDateChange(iso)
+  }
 
   return (
     <Card className="h-fit">
@@ -110,21 +143,66 @@ export function PredictionCard({
               >
                 End of 7-day window
               </label>
-              <div className="w-full">
-                <Input
-                  id="window-end-date"
-                  type="date"
-                  min={dataRangeStart}
-                  max={dataRangeEnd}
-                  value={windowEndDate ?? ""}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    if (v) onWindowEndDateChange(v)
-                  }}
-                  disabled={latestLoading}
-                  className="h-9 w-full min-w-0 font-mono text-sm"
-                />
-              </div>
+              <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                <div className="relative w-full">
+                  <Input
+                    id="window-end-date"
+                    aria-label="End of 7-day window (MM/DD/YYYY)"
+                    inputMode="numeric"
+                    placeholder="MM/DD/YYYY"
+                    value={windowEndInput}
+                    onChange={(e) => setWindowEndInput(e.target.value)}
+                    onBlur={(e) => commitWindowEndInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        commitWindowEndInput((e.target as HTMLInputElement).value)
+                        ;(e.target as HTMLInputElement).blur()
+                      }
+                    }}
+                    disabled={latestLoading}
+                    className="h-9 w-full min-w-0 pr-10 font-mono text-sm"
+                  />
+
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Open calendar"
+                      disabled={latestLoading}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+                    >
+                      <CalendarIcon className="h-4 w-4" />
+                    </button>
+                  </PopoverTrigger>
+                </div>
+
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    captionLayout="dropdown"
+                    fromYear={2018}
+                    toYear={2024}
+                    selected={windowEndDate ? parseISO(windowEndDate) : undefined}
+                    onSelect={(d) => {
+                      if (!d) return
+                      const iso = format(d, "yyyy-MM-dd")
+                      if (dataRangeStart && iso < dataRangeStart) return
+                      if (dataRangeEnd && iso > dataRangeEnd) return
+                      onWindowEndDateChange(iso)
+                      setWindowEndInput(format(d, "MM/dd/yyyy"))
+                      setIsCalendarOpen(false)
+                    }}
+                    disabled={(d) => {
+                      const iso = format(d, "yyyy-MM-dd")
+                      if (dataRangeStart && iso < dataRangeStart) return true
+                      if (dataRangeEnd && iso > dataRangeEnd) return true
+                      const y = getYear(d)
+                      if (y > 2024) return true
+                      return false
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
               <p className="text-left text-xs text-muted-foreground">
                 USGS data available {dataRangeStart} → {dataRangeEnd}. The chart uses the seven days
                 ending on this date.
@@ -171,7 +249,7 @@ export function PredictionCard({
               Enter all 7 discharge values
             </span>
           )}
-          {isValid && (
+          {isSeriesValid && (
             <span className="text-emerald-600">Ready to predict</span>
           )}
         </div>
@@ -187,7 +265,7 @@ export function PredictionCard({
 
         <Button
           onClick={onPredict}
-          disabled={!isValid || isLoading || latestLoading}
+          disabled={!isSeriesValid || isLoading || latestLoading}
           className="w-full bg-[#185FA5] hover:bg-[#185FA5]/90 text-white"
           size="lg"
         >

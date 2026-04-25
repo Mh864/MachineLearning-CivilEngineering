@@ -8,7 +8,7 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: 'Flood Risk Predictor',
-  description: 'Real-time river discharge analysis and flood risk prediction for 10 US gauge stations using machine learning',
+  description: 'Real-time river discharge analysis and flood risk prediction for 11 US gauge stations using machine learning',
   generator: 'v0.app',
   icons: {
     icon: [
