@@ -110,6 +110,7 @@ def test_inference_matches_training_row(paths_exist: bool) -> None:
     recent_snow_depth = wdf["snow_depth"].astype(float).tolist()
 
     api_df = _build_feature_frame(
+        site_id=site_id,
         feature_cols=list(FEATURE_COLUMNS),
         date=Dn,
         recent_discharge=recent_discharge,

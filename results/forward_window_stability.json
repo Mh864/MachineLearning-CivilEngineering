@@ -3,120 +3,120 @@
   "target_type": "multiclass",
   "target_column": "target_multiclass",
   "n_windows": 4,
-  "n_test_rows_used": 4531,
+  "n_test_rows_used": 4190,
   "windows": [
     {
       "window_index": 0,
-      "n_rows": 1132,
-      "date_start": "2025-01-17",
-      "date_end": "2025-05-10",
+      "n_rows": 1047,
+      "date_start": "2023-12-16",
+      "date_end": "2024-03-20",
       "metrics": {
-        "accuracy": 0.6563604240282686,
-        "macro_precision": 0.5401481499106311,
-        "macro_recall": 0.6238273272309254,
-        "macro_f1": 0.5571801822459092,
+        "accuracy": 0.9130850047755492,
+        "macro_precision": 0.8747227679258662,
+        "macro_recall": 0.8877053538663168,
+        "macro_f1": 0.8805486455124035,
         "confusion_matrix": [
           [
-            578,
-            209,
-            56
+            649,
+            40,
+            0
           ],
           [
-            58,
-            101,
-            33
+            17,
+            168,
+            16
           ],
           [
-            2,
-            31,
-            64
+            5,
+            13,
+            139
           ]
         ]
       }
     },
     {
       "window_index": 1,
-      "n_rows": 1133,
-      "date_start": "2025-05-10",
-      "date_end": "2025-08-31",
+      "n_rows": 1048,
+      "date_start": "2024-03-20",
+      "date_end": "2024-06-23",
       "metrics": {
-        "accuracy": 0.5154457193292145,
-        "macro_precision": 0.49879548126015055,
-        "macro_recall": 0.5887301821827013,
-        "macro_f1": 0.45483984189533216,
+        "accuracy": 0.9255725190839694,
+        "macro_precision": 0.909013720430701,
+        "macro_recall": 0.9189822412573884,
+        "macro_f1": 0.9138213180008846,
         "confusion_matrix": [
           [
-            398,
-            158,
-            270
+            568,
+            33,
+            1
           ],
           [
-            25,
-            122,
-            72
+            17,
+            248,
+            15
           ],
           [
-            4,
-            20,
-            64
+            3,
+            9,
+            154
           ]
         ]
       }
     },
     {
       "window_index": 2,
-      "n_rows": 1133,
-      "date_start": "2025-08-31",
-      "date_end": "2025-12-22",
+      "n_rows": 1047,
+      "date_start": "2024-06-23",
+      "date_end": "2024-09-26",
       "metrics": {
-        "accuracy": 0.8296557811120918,
-        "macro_precision": 0.4447066672033449,
-        "macro_recall": 0.6800319520520759,
-        "macro_f1": 0.47242140178415154,
+        "accuracy": 0.9312320916905444,
+        "macro_precision": 0.8702423035199939,
+        "macro_recall": 0.8555215045747953,
+        "macro_f1": 0.8626393797150186,
         "confusion_matrix": [
           [
-            903,
-            80,
-            57
+            768,
+            26,
+            1
           ],
           [
             25,
-            22,
-            29
+            168,
+            8
           ],
           [
-            1,
-            1,
-            15
+            5,
+            7,
+            39
           ]
         ]
       }
     },
     {
       "window_index": 3,
-      "n_rows": 1133,
-      "date_start": "2025-12-22",
-      "date_end": "2026-04-18",
+      "n_rows": 1048,
+      "date_start": "2024-09-26",
+      "date_end": "2024-12-30",
       "metrics": {
-        "accuracy": 0.7193292144748455,
-        "macro_precision": 0.576497309220097,
-        "macro_recall": 0.6803490252267901,
-        "macro_f1": 0.5979356007650902,
+        "accuracy": 0.9437022900763359,
+        "macro_precision": 0.810328758049188,
+        "macro_recall": 0.8283672711846432,
+        "macro_f1": 0.8176332447374944,
         "confusion_matrix": [
           [
-            641,
-            173,
-            45
+            875,
+            23,
+            0
           ],
           [
-            7,
-            73,
-            68
+            12,
+            48,
+            10
           ],
           [
             2,
-            23,
-            101
+            12,
+            66
           ]
         ]
       }

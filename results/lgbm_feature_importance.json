@@ -4,123 +4,155 @@
   "feature_importance_sorted": [
     {
       "feature": "discharge_diff_1",
-      "importance": 2045.0
+      "importance": 2876.0
+    },
+    {
+      "feature": "discharge_pct_of_p90",
+      "importance": 1520.0
+    },
+    {
+      "feature": "discharge_roll_mean_3_norm",
+      "importance": 1283.0
     },
     {
       "feature": "days_since_last_heavy_rain",
-      "importance": 1955.0
-    },
-    {
-      "feature": "discharge_roll_std_7",
-      "importance": 1606.0
-    },
-    {
-      "feature": "discharge_roll_max_3",
-      "importance": 1379.0
-    },
-    {
-      "feature": "awnd",
-      "importance": 1360.0
-    },
-    {
-      "feature": "discharge_lag1",
-      "importance": 1344.0
+      "importance": 1195.0
     },
     {
       "feature": "discharge_roll_std_3",
-      "importance": 1304.0
+      "importance": 1169.0
     },
     {
-      "feature": "discharge_roll_max_7",
-      "importance": 1264.0
+      "feature": "discharge_lag1",
+      "importance": 1122.0
     },
     {
-      "feature": "prcp_roll_sum_7",
-      "importance": 1231.0
+      "feature": "discharge_roll_std_7",
+      "importance": 1072.0
     },
     {
-      "feature": "discharge_roll_mean_3",
-      "importance": 1171.0
+      "feature": "discharge_norm_median",
+      "importance": 1029.0
     },
     {
-      "feature": "tmin",
-      "importance": 1118.0
+      "feature": "discharge_roll_mean_7_norm",
+      "importance": 992.0
     },
     {
-      "feature": "discharge_lag3",
-      "importance": 1041.0
+      "feature": "discharge_pct_of_p75",
+      "importance": 866.0
     },
     {
-      "feature": "tavg",
-      "importance": 1033.0
-    },
-    {
-      "feature": "discharge_roll_mean_7",
-      "importance": 1020.0
+      "feature": "discharge_lag3_norm",
+      "importance": 800.0
     },
     {
       "feature": "temp_range",
-      "importance": 998.0
+      "importance": 784.0
     },
     {
-      "feature": "month_cos",
-      "importance": 807.0
+      "feature": "discharge_roll_mean_3",
+      "importance": 720.0
     },
     {
-      "feature": "discharge_lag2",
-      "importance": 794.0
-    },
-    {
-      "feature": "tmax",
-      "importance": 764.0
-    },
-    {
-      "feature": "prcp_roll_sum_3_x_discharge_roll_mean_3",
-      "importance": 750.0
+      "feature": "discharge_lag2_norm",
+      "importance": 719.0
     },
     {
       "feature": "prcp_x_discharge_lag1",
-      "importance": 678.0
+      "importance": 705.0
     },
     {
-      "feature": "month_sin",
-      "importance": 627.0
+      "feature": "discharge_lag3",
+      "importance": 690.0
+    },
+    {
+      "feature": "discharge_lag2",
+      "importance": 672.0
+    },
+    {
+      "feature": "awnd",
+      "importance": 663.0
+    },
+    {
+      "feature": "prcp_roll_sum_7",
+      "importance": 661.0
+    },
+    {
+      "feature": "prcp_roll_sum_3_x_discharge_roll_mean_3",
+      "importance": 655.0
+    },
+    {
+      "feature": "tmin",
+      "importance": 651.0
+    },
+    {
+      "feature": "discharge_roll_max_3",
+      "importance": 642.0
+    },
+    {
+      "feature": "tavg",
+      "importance": 606.0
+    },
+    {
+      "feature": "discharge_roll_mean_7",
+      "importance": 591.0
     },
     {
       "feature": "prcp_roll_sum_3",
-      "importance": 621.0
+      "importance": 575.0
     },
     {
-      "feature": "prcp_lag3",
-      "importance": 533.0
+      "feature": "discharge_roll_max_7",
+      "importance": 573.0
+    },
+    {
+      "feature": "tmax",
+      "importance": 543.0
+    },
+    {
+      "feature": "month_cos",
+      "importance": 475.0
     },
     {
       "feature": "prcp_lag1",
-      "importance": 512.0
+      "importance": 455.0
     },
     {
       "feature": "prcp_lag2",
-      "importance": 467.0
+      "importance": 435.0
     },
     {
-      "feature": "prcp_roll_mean_7",
-      "importance": 237.0
+      "feature": "month_sin",
+      "importance": 427.0
     },
     {
-      "feature": "snow_depth",
-      "importance": 169.0
+      "feature": "prcp_lag3",
+      "importance": 373.0
     },
     {
       "feature": "snow",
-      "importance": 73.0
+      "importance": 121.0
     },
     {
-      "feature": "heavy_rain_flag_1d",
-      "importance": 51.0
+      "feature": "prcp_roll_mean_7",
+      "importance": 118.0
+    },
+    {
+      "feature": "snow_depth",
+      "importance": 76.0
     },
     {
       "feature": "prcp_roll_mean_3",
-      "importance": 48.0
+      "importance": 75.0
+    },
+    {
+      "feature": "heavy_rain_flag_1d",
+      "importance": 71.0
+    },
+    {
+      "feature": "discharge_lag1_norm",
+      "importance": 0.0
     }
   ]
 }

@@ -1,37 +1,35 @@
 {
   "status": "success",
-  "started_at_utc": "2026-04-20T14:50:33.822951+00:00",
-  "finished_at_utc": "2026-04-20T14:51:26.469651+00:00",
-  "duration_seconds": 52.65,
+  "started_at_utc": "2026-04-25T13:36:08.787501+00:00",
+  "finished_at_utc": "2026-04-25T13:37:13.430369+00:00",
+  "duration_seconds": 64.64,
   "command": [
-    "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+    "C:\\Users\\User\\miniconda3\\python.exe",
     "run_pipeline.py",
     "--start-date",
     "2018-01-01",
     "--end-date",
-    "2026-04-20",
+    "2024-12-31",
     "--model-type",
-    "both",
-    "--skip-fetch",
-    "--with-stage"
+    "both"
   ],
-  "log_path": "results\\ops\\logs\\refresh_20260420T145033Z.log",
+  "log_path": "results\\ops\\logs\\refresh_20260425T133608Z.log",
   "args": {
     "start_date": "2018-01-01",
-    "end_date": "2026-04-20",
+    "end_date": "2024-12-31",
     "model_type": "both",
-    "skip_fetch": true,
+    "skip_fetch": false,
     "no_calibration": false,
-    "with_stage": true
+    "with_stage": false
   },
   "model_backups": [
     {
       "model": "model.pkl",
-      "backup_path": "results\\ops\\model_backups\\20260420T145033Z_model.pkl"
+      "backup_path": "results\\ops\\model_backups\\20260425T133608Z_model.pkl"
     },
     {
       "model": "lgbm_model.pkl",
-      "backup_path": "results\\ops\\model_backups\\20260420T145033Z_lgbm_model.pkl"
+      "backup_path": "results\\ops\\model_backups\\20260425T133608Z_lgbm_model.pkl"
     }
   ]
 }
