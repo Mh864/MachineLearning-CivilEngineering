@@ -17,7 +17,7 @@ npm run dev
 # Web: http://localhost:3000
 ```
 
-#How to run (Docker from this repo)
+How to run (Docker from this repo)
 
 From the repo root:
 ```bash
@@ -26,10 +26,9 @@ docker compose up -d --build
 - Web: `http://localhost:3000`
 - API: `http://localhost:8000/health`
 
-How to run (pull images from Docker Hub)
-This project is published as two images: one for the API and one for the web UI.
 
-Run with `docker run`:
+How to run by pulling images from Docker Hub (Second Option using DockerHub)
+This project is published as two images: one for the API and one for the web UI.
 
 ```bash
 docker pull hadysouaiby/flood-api:latest
