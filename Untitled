@@ -1,0 +1,9 @@
+How to Run: 
+```bash 
+pip install -r requirements.txt 
+python run_api.py # Terminal 1: starts API at localhost:8000 
+cd frontend1 && npm install && npm run dev   # Terminal 2: dashboard at localhost:3000 
+``` 
+
+For more information, check Rapport&PowerPoint for the Final Report and the slides.
+The docs folder also explains each part of the project, in separate README files.
