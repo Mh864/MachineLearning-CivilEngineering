@@ -221,6 +221,13 @@ def _add_features_per_site(
 ) -> pd.DataFrame:
     sdf = merge_weather_into_site_discharge(sdf, precip_df)
 
+    site_median = float(pd.to_numeric(sdf["discharge"], errors="coerce").median())
+    site_p75 = float(pd.to_numeric(sdf["discharge"], errors="coerce").quantile(0.75))
+    site_p90 = float(pd.to_numeric(sdf["discharge"], errors="coerce").quantile(0.90))
+    median_denom = site_median if np.isfinite(site_median) and site_median > 0 else 1.0
+    p75_denom = site_p75 if np.isfinite(site_p75) and site_p75 > 0 else 1.0
+    p90_denom = site_p90 if np.isfinite(site_p90) and site_p90 > 0 else 1.0
+
     sdf["discharge_lag1"] = sdf["discharge"].shift(1)
     sdf["discharge_lag2"] = sdf["discharge"].shift(2)
     sdf["discharge_lag3"] = sdf["discharge"].shift(3)
@@ -233,6 +240,16 @@ def _add_features_per_site(
     sdf["discharge_roll_max_7"] = sdf["discharge"].rolling(window=7, min_periods=7).max()
 
     sdf["discharge_diff_1"] = sdf["discharge"] - sdf["discharge_lag1"]
+    # Normalized discharge features (per-site relative levels).
+    # These are defined in terms of discharge_lag1 to match training row alignment (day D uses Q_{D-1}).
+    sdf["discharge_norm_median"] = sdf["discharge_lag1"] / median_denom
+    sdf["discharge_lag1_norm"] = sdf["discharge_lag1"] / median_denom
+    sdf["discharge_lag2_norm"] = sdf["discharge_lag2"] / median_denom
+    sdf["discharge_lag3_norm"] = sdf["discharge_lag3"] / median_denom
+    sdf["discharge_roll_mean_3_norm"] = sdf["discharge_roll_mean_3"] / median_denom
+    sdf["discharge_roll_mean_7_norm"] = sdf["discharge_roll_mean_7"] / median_denom
+    sdf["discharge_pct_of_p75"] = sdf["discharge_lag1"] / p75_denom
+    sdf["discharge_pct_of_p90"] = sdf["discharge_lag1"] / p90_denom
     month = sdf["date"].dt.month.astype(int)
     sdf["month_sin"] = np.sin(2.0 * np.pi * month / 12.0)
     sdf["month_cos"] = np.cos(2.0 * np.pi * month / 12.0)
@@ -273,22 +290,11 @@ def _add_target_per_site(sdf: pd.DataFrame, *, percentile: float = 0.9) -> pd.Da
     threshold = float(np.nanpercentile(sdf["discharge"].to_numpy(dtype=float), percentile * 100))
     threshold_medium = float(np.nanpercentile(sdf["discharge"].to_numpy(dtype=float), 75.0))
     threshold_high = float(np.nanpercentile(sdf["discharge"].to_numpy(dtype=float), 90.0))
-    median_denom = site_median if np.isfinite(site_median) and site_median > 0 else 1.0
-    p75_denom = threshold_medium if np.isfinite(threshold_medium) and threshold_medium > 0 else 1.0
-    p90_denom = threshold_high if np.isfinite(threshold_high) and threshold_high > 0 else 1.0
 
     sdf["site_median"] = site_median
     sdf["threshold"] = threshold
     sdf["threshold_medium"] = threshold_medium
     sdf["threshold_high"] = threshold_high
-    sdf["discharge_norm_median"] = sdf["discharge"] / median_denom
-    sdf["discharge_lag1_norm"] = sdf["discharge_lag1"] / median_denom
-    sdf["discharge_lag2_norm"] = sdf["discharge_lag2"] / median_denom
-    sdf["discharge_lag3_norm"] = sdf["discharge_lag3"] / median_denom
-    sdf["discharge_roll_mean_3_norm"] = sdf["discharge_roll_mean_3"] / median_denom
-    sdf["discharge_roll_mean_7_norm"] = sdf["discharge_roll_mean_7"] / median_denom
-    sdf["discharge_pct_of_p75"] = sdf["discharge"] / p75_denom
-    sdf["discharge_pct_of_p90"] = sdf["discharge"] / p90_denom
 
     sdf["discharge_next_day"] = sdf["discharge"].shift(-1)
     has_next = sdf["discharge_next_day"].notna()

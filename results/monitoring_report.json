@@ -1,73 +1,73 @@
 {
-  "generated_at_utc": "2026-04-20T14:51:27.604103+00:00",
+  "generated_at_utc": "2026-04-25T13:37:14.770860+00:00",
   "status": "alert",
   "alerts": [
     {
       "type": "drift",
       "column": "discharge_lag1",
-      "psi": 0.241,
+      "psi": 1.4487,
       "threshold": 0.2
     },
     {
       "type": "drift",
       "column": "discharge_roll_mean_7",
-      "psi": 0.2922,
+      "psi": 1.5739,
       "threshold": 0.2
     },
     {
       "type": "drift",
       "column": "month_sin",
-      "psi": 9.9185,
+      "psi": 8.9283,
       "threshold": 0.2
     },
     {
       "type": "drift",
       "column": "month_cos",
-      "psi": 13.2306,
+      "psi": 12.2597,
       "threshold": 0.2
     }
   ],
   "missingness": {
-    "recent_rows": 297,
-    "reference_rows": 1800,
+    "recent_rows": 330,
+    "reference_rows": 1980,
     "threshold_increase_pp": 10.0,
     "columns": {
       "discharge": {
-        "recent_missing_pct": 0.337,
-        "reference_missing_pct": 0.333,
-        "delta_pp": 0.003
+        "recent_missing_pct": 0.0,
+        "reference_missing_pct": 0.0,
+        "delta_pp": 0.0
       },
       "stage": {
-        "recent_missing_pct": 69.697,
-        "reference_missing_pct": 70.333,
-        "delta_pp": -0.636
+        "recent_missing_pct": 63.636,
+        "reference_missing_pct": 63.737,
+        "delta_pp": -0.101
       }
     },
     "alerts": []
   },
   "drift": {
-    "recent_rows": 289,
-    "reference_rows": 1773,
+    "recent_rows": 330,
+    "reference_rows": 1980,
     "psi_threshold": 0.2,
     "columns": {
       "discharge_lag1": {
-        "psi": 0.241,
+        "psi": 1.4487,
         "threshold": 0.2
       },
       "discharge_roll_mean_7": {
-        "psi": 0.2922,
+        "psi": 1.5739,
         "threshold": 0.2
       },
       "prcp_roll_sum_7": {
-        "psi": 0.0,
+        "psi": 0.0874,
         "threshold": 0.2
       },
       "month_sin": {
-        "psi": 9.9185,
+        "psi": 8.9283,
         "threshold": 0.2
       },
       "month_cos": {
-        "psi": 13.2306,
+        "psi": 12.2597,
         "threshold": 0.2
       }
     },
@@ -75,25 +75,25 @@
       {
         "type": "drift",
         "column": "discharge_lag1",
-        "psi": 0.241,
+        "psi": 1.4487,
         "threshold": 0.2
       },
       {
         "type": "drift",
         "column": "discharge_roll_mean_7",
-        "psi": 0.2922,
+        "psi": 1.5739,
         "threshold": 0.2
       },
       {
         "type": "drift",
         "column": "month_sin",
-        "psi": 9.9185,
+        "psi": 8.9283,
         "threshold": 0.2
       },
       {
         "type": "drift",
         "column": "month_cos",
-        "psi": 13.2306,
+        "psi": 12.2597,
         "threshold": 0.2
       }
     ]

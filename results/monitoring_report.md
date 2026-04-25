@@ -1,26 +1,26 @@
 # Monitoring Report
 
-- Generated at (UTC): `2026-04-20T14:51:27.604103+00:00`
+- Generated at (UTC): `2026-04-25T13:37:14.770860+00:00`
 - Overall status: `alert`
 - Total alerts: `4`
 
 ## Missingness
 
-- Recent rows: `297`
-- Reference rows: `1800`
+- Recent rows: `330`
+- Reference rows: `1980`
 - Alert threshold increase: `10.0 pp`
 
-- `discharge`: recent=0.337%, reference=0.333%, delta=0.003 pp
-- `stage`: recent=69.697%, reference=70.333%, delta=-0.636 pp
+- `discharge`: recent=0.0%, reference=0.0%, delta=0.0 pp
+- `stage`: recent=63.636%, reference=63.737%, delta=-0.101 pp
 
 ## Feature Drift (PSI)
 
 - PSI threshold: `0.2`
-- `discharge_lag1`: psi=0.241
-- `discharge_roll_mean_7`: psi=0.2922
-- `prcp_roll_sum_7`: psi=0.0
-- `month_sin`: psi=9.9185
-- `month_cos`: psi=13.2306
+- `discharge_lag1`: psi=1.4487
+- `discharge_roll_mean_7`: psi=1.5739
+- `prcp_roll_sum_7`: psi=0.0874
+- `month_sin`: psi=8.9283
+- `month_cos`: psi=12.2597
 
 ## Performance
 
@@ -28,7 +28,7 @@
 
 ## Alerts
 
-- `drift`: `{"type": "drift", "column": "discharge_lag1", "psi": 0.241, "threshold": 0.2}`
-- `drift`: `{"type": "drift", "column": "discharge_roll_mean_7", "psi": 0.2922, "threshold": 0.2}`
-- `drift`: `{"type": "drift", "column": "month_sin", "psi": 9.9185, "threshold": 0.2}`
-- `drift`: `{"type": "drift", "column": "month_cos", "psi": 13.2306, "threshold": 0.2}`
+- `drift`: `{"type": "drift", "column": "discharge_lag1", "psi": 1.4487, "threshold": 0.2}`
+- `drift`: `{"type": "drift", "column": "discharge_roll_mean_7", "psi": 1.5739, "threshold": 0.2}`
+- `drift`: `{"type": "drift", "column": "month_sin", "psi": 8.9283, "threshold": 0.2}`
+- `drift`: `{"type": "drift", "column": "month_cos", "psi": 12.2597, "threshold": 0.2}`
