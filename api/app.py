@@ -98,6 +98,8 @@ SITE_TO_NOAA = {
     "11425500": "Sacramento_CA",
     "12301933": "ClarkFork_MT",
     "14211720": "Willamette_OR",
+"07374000": "Mississippi_LA",
+"03303000": "Ohio_KY",
 }
 
 

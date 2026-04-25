@@ -25,6 +25,8 @@ SITE_TO_NOAA = {
     "11425500": "Sacramento_CA",
     "12301933": "ClarkFork_MT",
     "14211720": "Willamette_OR",
+"07374000": "Mississippi_LA",
+"03303000": "Ohio_KY",
 }
 
 # GHCND station IDs (can be overridden in sites.json with "noaa_station_id")
@@ -39,6 +41,8 @@ SITE_TO_STATION = {
     "11425500": "GHCND:USW00023232",  # Sacramento, CA (regional GHCND; aligns with sites.json)
     "12301933": "GHCND:USW00024153",  # Missoula, MT
     "14211720": "GHCND:USW00024229",  # Portland, OR
+"07374000": "GHCND:USW00012916",  # New Orleans, LA
+"03303000": "GHCND:USW00093821",  # Louisville, KY
 }
 
 

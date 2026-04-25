@@ -8,7 +8,9 @@
     {"site_id": "08066500", "name": "Trinity River at Romayor, TX"},
     {"site_id": "11425500", "name": "Sacramento River at Verona, CA"},
     {"site_id": "12301933", "name": "Clark Fork above Missoula, MT"},
-    {"site_id": "14211720", "name": "Willamette River at Portland, OR"}
+    {"site_id": "14211720", "name": "Willamette River at Portland, OR"},
+    {"site_id": "07374000", "name": "Mississippi River at Baton Rouge, LA"},
+{"site_id": "03303000", "name": "Ohio River at Louisville, KY"}
   ],
   "notes": {
     "schema": "Add one object per USGS gauge. Only site_id is required.",

@@ -14,6 +14,8 @@ export const STATIONS: Station[] = [
   { siteId: "11425500", name: "Sacramento River at Verona", state: "CA" },
   { siteId: "12301933", name: "Clark Fork above Missoula", state: "MT" },
   { siteId: "14211720", name: "Willamette River at Portland", state: "OR" },
+{ siteId: "07374000", name: "Mississippi River", state: "LA" },
+{ siteId: "03303000", name: "Ohio River", state: "KY" },
 ]
 
 export const MODEL_RESULTS = {
