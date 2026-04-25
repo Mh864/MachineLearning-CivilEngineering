@@ -1,8 +1,16 @@
 .git
 .gitignore
-.next
-frontend1/.next
-frontend1/node_modules
+
+# Editor / tooling
+.cursor
+.vscode
+.idea
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Python caches / envs
 **/__pycache__
 **/*.pyc
 **/*.pyo
@@ -11,9 +19,29 @@ frontend1/node_modules
 .venv
 venv
 env
+.env
+.env.*
+
+# Node/Next build artifacts
+node_modules
+**/node_modules
+.next
+**/.next
+frontend1/out
+frontend1/.turbo
+
+# Large project artifacts (not needed at image build time)
+data
+models
+results
+notebooks
+docs
+github_upload_bundle
+Rapport&PowerPoint
+
+# Archives / logs
 *.log
 *.zip
 *.tar
 *.tar.gz
 *.7z
-Rapport&PowerPoint
